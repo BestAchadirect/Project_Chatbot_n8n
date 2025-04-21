@@ -1,23 +1,3 @@
-// let sessionId = localStorage.getItem('chatSessionId');
-
-// // If not, generate a new one
-// if (!sessionId) {
-//   sessionId = crypto.randomUUID(); // Generates a UUID
-//   localStorage.setItem('chatSessionId', sessionId);
-
-  // // Optional: Send it to backend to log the session creation
-  // fetch('http://localhost:5678/webhook-test/new-session', {
-  //   method: 'POST',
-  //   headers: {
-  //     'Content-Type': 'application/json'
-  //   },
-  //   body: JSON.stringify({
-  //     sessionId: sessionId,
-  //     message: 'Session started',
-  //     sender: 'user'
-  //   })
-  // }).catch(console.error);
-
 const chatBox = document.getElementById('chat-box');
 
     function appendMessage(sender, text) {
@@ -42,7 +22,7 @@ const chatBox = document.getElementById('chat-box');
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               chatInput: message,
-              // sessionId: sessionId,
+              sessionId: sessionId,
               sender: 'user',
             })
             
