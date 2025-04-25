@@ -1,16 +1,12 @@
 from flask import Flask
-from flask_sqlalchemy import SQLAlchemy
-from config import Config
-
-db = SQLAlchemy()
+from flask_cors import CORS
+from .routes import api_routes
 
 def create_app():
     app = Flask(__name__)
-    app.config.from_object(Config)
+    # Allow requests from http://localhost:3000
+    CORS(app, resources={r"/*": {"origins": "http://localhost:3000"}})
 
-    db.init_app(app)
-
-    from .routes.faq_routes import faq_bp
-    app.register_blueprint(faq_bp, url_prefix="/api/faqs")
-
+    app.register_blueprint(api_routes)
+    
     return app
