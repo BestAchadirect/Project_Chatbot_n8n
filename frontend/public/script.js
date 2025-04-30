@@ -1,18 +1,42 @@
-// User ID Setup
-let userId = localStorage.getItem('userId');
-if (!userId) {
-  userId = `guest_${Math.random().toString(36).substring(2, 15)}`;
-  localStorage.setItem('userId', userId);
+// -----------------------------
+// 🔧 Utility Functions
+// -----------------------------
+
+function generateUserId() {
+  return `guest_${Math.random().toString(36).substring(2, 15)}`;
 }
 
-// Don't prefix the UUID with 'session_' or 'guest_'
-let sessionId = localStorage.getItem('sessionId');
-if (!sessionId) {
-  sessionId = crypto.randomUUID();  // clean, proper UUID
-  localStorage.setItem('sessionId', sessionId);
+function generateSessionId() {
+  return crypto.randomUUID();
 }
 
-// Append a message to the chat
+function isValidUUID(uuid) {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(uuid);
+}
+
+function getOrCreateLocalStorageItem(key, generatorFn) {
+  let value = localStorage.getItem(key);
+  if (!value || (key === 'sessionId' && !isValidUUID(value))) {
+    value = generatorFn();
+    localStorage.setItem(key, value);
+  }
+  return value;
+}
+
+// -----------------------------
+// 🗂️ Session Initialization
+// -----------------------------
+
+function initializeSession() {
+  const userId = getOrCreateLocalStorageItem('userId', generateUserId);
+  const sessionId = getOrCreateLocalStorageItem('sessionId', generateSessionId);
+  return { userId, sessionId };
+}
+
+// -----------------------------
+// 💬 Chat Rendering
+// -----------------------------
+
 function appendMessage(sender, text) {
   const chatBox = document.getElementById('chat-box');
   const msg = document.createElement('div');
@@ -22,7 +46,12 @@ function appendMessage(sender, text) {
   chatBox.scrollTop = chatBox.scrollHeight;
 }
 
-// Send Message Handler
+// -----------------------------
+// 🚀 Chat API Logic
+// -----------------------------
+
+let nextEndpoint = 'http://localhost:5000/api/session'; // Default endpoint
+
 async function sendMessage() {
   const input = document.getElementById('user-input');
   const message = input.value.trim();
@@ -32,17 +61,11 @@ async function sendMessage() {
   input.value = '';
 
   // Retrieve userId and sessionId from localStorage
-  const userId = localStorage.getItem('userId');
-  const sessionId = localStorage.getItem('sessionId');
-
-  if (!userId || !sessionId) {
-    console.error('userId or sessionId is missing.');
-    appendMessage('bot', 'An error occurred. Please refresh the page.');
-    return;
-  }
+  let userId = localStorage.getItem('userId');
+  let sessionId = localStorage.getItem('sessionId');
 
   try {
-    const response = await fetch('http://localhost:5000/api/session', {
+    const response = await fetch(nextEndpoint, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -54,13 +77,31 @@ async function sendMessage() {
 
     const data = await response.json();
     appendMessage('bot', data.response || 'No response received.');
+
+    // Update sessionId and userId if provided in the response
+    if (data.sessionId) {
+      sessionId = data.sessionId;
+      localStorage.setItem('sessionId', sessionId);
+    }
+    if (data.userId) {
+      userId = data.userId;
+      localStorage.setItem('userId', userId);
+    }
+
+    // Update nextEndpoint if provided in the response
+    if (data.nextEndpoint) {
+      nextEndpoint = `http://localhost:5678${data.nextEndpoint}`;
+    }
   } catch (error) {
     appendMessage('bot', 'Sorry, something went wrong.');
     console.error('Fetch error:', error);
   }
 }
 
-// Add Enter Key Event Listener
+// -----------------------------
+// 🎯 Event Listener
+// -----------------------------
+
 document.getElementById('user-input').addEventListener('keypress', function (e) {
   if (e.key === 'Enter') {
     sendMessage();
