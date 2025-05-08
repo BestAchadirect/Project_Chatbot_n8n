@@ -4,10 +4,24 @@ from datetime import datetime, timezone
 from flask import request, jsonify, Blueprint
 from .database import SessionLocal
 from .models import ChatSession, ChatMessage, UserInfo
-import requests
 import uuid
 
 api_routes = Blueprint('api_routes', __name__)
+bp = Blueprint('chat', __name__)
+
+# In-memory response storage (replace with DB/Redis in production)
+latest_response = {"message": ""}
+
+@bp.route('/chat/response', methods=['POST'])
+def receive_response():
+    data = request.get_json()
+    print("✅ Received from n8n:", data)
+    latest_response["message"] = data.get("message", "")
+    return jsonify({"status": "received"}), 200
+
+@bp.route('/chat/latest', methods=['GET'])
+def get_latest_response():
+    return jsonify(latest_response), 200
 
 def parse_user_info(text):
     parts = [part.strip() for part in text.split(',')]
@@ -148,3 +162,20 @@ def handle_session():
     finally:
         if db:
             db.close()
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

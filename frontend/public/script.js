@@ -98,6 +98,13 @@ async function sendMessage() {
   }
 }
 
+fetch("http://localhost:5000/chat/latest")
+  .then(res => res.json())
+  .then(data => {
+    console.log("Bot:", data.message);
+  });
+
+
 // -----------------------------
 // 🎯 Event Listener
 // -----------------------------
@@ -107,3 +114,4 @@ document.getElementById('user-input').addEventListener('keypress', function (e) 
     sendMessage();
   }
 });
+
