@@ -17,7 +17,21 @@ def receive_response():
     data = request.get_json()
     print("✅ Received from n8n:", data)
     latest_response["message"] = data.get("message", "")
-    return jsonify({"status": "received"}), 200
+
+    # Save the bot's response to the database
+    db = SessionLocal()
+    try:
+        session_id = data.get("sessionId")
+        if session_id:
+            save_bot_message(db, session_id, latest_response["message"])
+            db.commit()
+    except Exception as e:
+        db.rollback()
+        print(f"Error saving bot response: {e}")
+    finally:
+        db.close()
+
+    return jsonify({"status": "received", "response": latest_response["message"]}), 200
 
 @bp.route('/chat/latest', methods=['GET'])
 def get_latest_response():
@@ -108,7 +122,7 @@ def handle_session():
 
         # Check if user information is already linked to the session
         if session.user_info_id:
-            bot_response = "How can I assist you today?"
+            bot_response = "Hello, How can I assist you today?"
             save_bot_message(db, session_id, bot_response)
             db.commit()
 
@@ -162,6 +176,8 @@ def handle_session():
     finally:
         if db:
             db.close()
+
+
 
 
 

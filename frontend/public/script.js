@@ -50,7 +50,7 @@ function appendMessage(sender, text) {
 // 🚀 Chat API Logic
 // -----------------------------
 
-let nextEndpoint = 'http://localhost:5000/api/session'; // Default endpoint
+let nextEndpoint = 'http://localhost:5001/api/session'; // Default endpoint
 
 async function sendMessage() {
   const input = document.getElementById('user-input');
@@ -76,7 +76,12 @@ async function sendMessage() {
     });
 
     const data = await response.json();
-    appendMessage('bot', data.response || 'No response received.');
+    // Check if the "response" field exists and display it
+    if (data.response) {
+      appendMessage('bot', data.response); // Display the response from the backend
+    } else {
+      appendMessage('bot', 'No response received.'); // Fallback message
+    }
 
     // Update sessionId and userId if provided in the response
     if (data.sessionId) {
@@ -98,12 +103,11 @@ async function sendMessage() {
   }
 }
 
-fetch("http://localhost:5000/chat/latest")
+fetch("http://localhost:5001/chat/latest")
   .then(res => res.json())
   .then(data => {
     console.log("Bot:", data.message);
   });
-
 
 // -----------------------------
 // 🎯 Event Listener
