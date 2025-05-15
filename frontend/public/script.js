@@ -38,9 +38,9 @@ function initializeSession() {
 // -----------------------------
 
 function appendMessage(sender, text) {
-  const chatBox = document.getElementById('chat-box');
+  const chatBox = document.getElementById('chat-messages');
   const msg = document.createElement('div');
-  msg.classList.add('chat-message', sender);
+  msg.classList.add('chat-messages', sender);
   msg.textContent = text;
   chatBox.appendChild(msg);
   chatBox.scrollTop = chatBox.scrollHeight;
@@ -53,12 +53,13 @@ function appendMessage(sender, text) {
 let nextEndpoint = 'http://localhost:5001/api/session'; // Default endpoint
 
 async function sendMessage() {
-  const input = document.getElementById('user-input');
+  const input = document.getElementById('message-input');
   const message = input.value.trim();
   if (!message) return;
 
   appendMessage('user', message); // Append the user's message to the UI
   input.value = '';
+  input.style.height = 'auto';
 
   // Retrieve userId and sessionId from localStorage
   let userId = localStorage.getItem('userId');
@@ -76,14 +77,12 @@ async function sendMessage() {
     });
 
     const data = await response.json();
-    // Check if the "response" field exists and display it
     if (data.response) {
-      appendMessage('bot', data.response); // Display the response from the backend
+      appendMessage('bot', data.response);
     } else {
-      appendMessage('bot', 'No response received.'); // Fallback message
+      appendMessage('bot', 'No response received.');
     }
 
-    // Update sessionId and userId if provided in the response
     if (data.sessionId) {
       sessionId = data.sessionId;
       localStorage.setItem('sessionId', sessionId);
@@ -93,9 +92,12 @@ async function sendMessage() {
       localStorage.setItem('userId', userId);
     }
 
-    // Update nextEndpoint if provided in the response
     if (data.nextEndpoint) {
-      nextEndpoint = `http://localhost:5678${data.nextEndpoint}`;
+      if (data.nextEndpoint.startsWith('/api/')) {
+        nextEndpoint = `http://localhost:5001${data.nextEndpoint}`;
+      } else {
+        nextEndpoint = `http://localhost:5678${data.nextEndpoint}`;
+      }
     }
   } catch (error) {
     appendMessage('bot', 'Sorry, something went wrong.');
@@ -103,6 +105,7 @@ async function sendMessage() {
   }
 }
 
+// Return latest message 
 fetch("http://localhost:5001/chat/latest")
   .then(res => res.json())
   .then(data => {
@@ -113,9 +116,28 @@ fetch("http://localhost:5001/chat/latest")
 // 🎯 Event Listener
 // -----------------------------
 
-document.getElementById('user-input').addEventListener('keypress', function (e) {
-  if (e.key === 'Enter') {
+document.getElementById('send-button').addEventListener('click', sendMessage);
+
+document.getElementById('message-input').addEventListener('keydown', function(e) {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
     sendMessage();
   }
+});
+
+document.getElementById('message-input').addEventListener('input', function() {
+  this.style.height = 'auto';
+  this.style.height = this.scrollHeight + 'px';
+  this.style.overflowY = this.scrollHeight > 100 ? 'auto' : 'hidden';
+});
+
+// Optional: Open/close chat logic (keep as in your new design)
+document.getElementById('chat-toggle').addEventListener('click', () => {
+  document.getElementById('chat-container').classList.add('active');
+  document.getElementById('chat-toggle').classList.remove('pulse');
+  document.getElementById('message-input').focus();
+});
+document.getElementById('close-chat').addEventListener('click', () => {
+  document.getElementById('chat-container').classList.remove('active');
 });
 

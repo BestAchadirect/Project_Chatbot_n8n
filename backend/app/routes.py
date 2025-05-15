@@ -5,6 +5,7 @@ from flask import request, jsonify, Blueprint
 from .database import SessionLocal
 from .models import ChatSession, ChatMessage, UserInfo
 import uuid
+import requests
 
 api_routes = Blueprint('api_routes', __name__)
 bp = Blueprint('chat', __name__)
@@ -92,23 +93,22 @@ def get_or_create_user(db, user_info):
 
 @api_routes.route("/api/session", methods=["POST"])
 def handle_session():
-    data = request.get_json()
-    session_id = data.get("sessionId", "")
-    user_id = data.get("userId", "")
-    chat_input = data.get("chatInput", "")
-
-    # Handle missing sessionId or userId for new customers
-    if not session_id:
-        session_id = str(uuid.uuid4())  # Generate a new sessionId
-    if not user_id:
-        user_id = f"guest_{uuid.uuid4().hex[:8]}"  # Generate a new userId
-
-    if not chat_input:
-        return jsonify({"error": "Missing required fields"}), 400
-
     db = None
     try:
         db = SessionLocal()
+        data = request.get_json()
+        session_id = data.get("sessionId", "")
+        user_id = data.get("userId", "")
+        chat_input = data.get("chatInput", "")
+
+        # Handle missing sessionId or userId for new customers
+        if not session_id:
+            session_id = str(uuid.uuid4())  # Generate a new sessionId
+        if not user_id:
+            user_id = f"guest_{uuid.uuid4().hex[:8]}"  # Generate a new userId
+
+        if not chat_input:
+            return jsonify({"error": "Missing required fields"}), 400
 
         # Validate session_id
         try:
@@ -122,12 +122,24 @@ def handle_session():
 
         # Check if user information is already linked to the session
         if session.user_info_id:
-            bot_response = "Hello, How can I assist you today?"
+            # Forward to n8n webhook
+            n8n_url = "http://localhost:5678/webhook-test/returning-user"
+            # n8n_url = "http://localhost:5678/webhook/returning-user"
+            n8n_response = requests.post(n8n_url, json={
+                "chatInput": chat_input,
+                "userId": user_id,
+                "sessionId": str(session_id)
+            })
+            bot_data = n8n_response.json()
+            if isinstance(bot_data, list) and len(bot_data) > 0:
+                bot_response = bot_data[0].get("response", "No response from agent.")
+            elif isinstance(bot_data, dict):
+                bot_response = bot_data.get("response", "No response from agent.")
+            else:
+                bot_response = "No response from agent."
             save_bot_message(db, session_id, bot_response)
             db.commit()
-
-            # Send subsequent messages to the webhook
-            return jsonify({"response": bot_response, "nextEndpoint": "/webhook-test/returning-user"})
+            return jsonify({"response": bot_response, "nextEndpoint": "/api/session"})
 
         # Parse and validate user info from input
         user_info = parse_user_info(chat_input)
@@ -156,8 +168,10 @@ def handle_session():
             save_bot_message(db, session_id, bot_response)
             db.commit()
 
-            # Return response with next endpoint
-            return jsonify({"response": bot_response, "nextEndpoint": "/webhook-test/returning-user"})
+            return jsonify({
+                "response": bot_response,
+                "nextEndpoint": "/api/session"
+            })
 
         else:
             # Prompt user to correct format
@@ -176,9 +190,6 @@ def handle_session():
     finally:
         if db:
             db.close()
-
-
-
 
 
 
