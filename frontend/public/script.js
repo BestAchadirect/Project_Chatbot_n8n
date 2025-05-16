@@ -38,9 +38,9 @@ function initializeSession() {
 // -----------------------------
 
 function appendMessage(sender, text) {
-  const chatBox = document.getElementById('chat-messages');
+  const chatBox = document.getElementById('chat-box');
   const msg = document.createElement('div');
-  msg.classList.add('chat-messages', sender);
+  msg.classList.add('chat-message', sender);
   msg.textContent = text;
   chatBox.appendChild(msg);
   chatBox.scrollTop = chatBox.scrollHeight;
