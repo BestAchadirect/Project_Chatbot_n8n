@@ -123,8 +123,8 @@ def handle_session():
         # Check if user information is already linked to the session
         if session.user_info_id:
             # Forward to n8n webhook
-            # n8n_url = "http://localhost:5678/webhook-test/returning-user"
-            n8n_url = "http://localhost:5678/webhook/returning-user"
+            n8n_url = "http://localhost:5678/webhook-test/returning-user"
+            # n8n_url = "http://localhost:5678/webhook/returning-user"
             n8n_response = requests.post(n8n_url, json={
                 "chatInput": chat_input,
                 "userId": user_id,

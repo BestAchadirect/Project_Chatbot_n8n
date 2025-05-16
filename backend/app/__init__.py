@@ -10,5 +10,6 @@ def create_app():
 
     app.register_blueprint(api_routes)
     app.register_blueprint(chat_bp)
-    
+
     return app
+

@@ -23,6 +23,7 @@ function getOrCreateLocalStorageItem(key, generatorFn) {
   return value;
 }
 
+
 // -----------------------------
 // 🗂️ Session Initialization
 // -----------------------------
@@ -41,9 +42,49 @@ function appendMessage(sender, text) {
   const chatBox = document.getElementById('chat-box');
   const msg = document.createElement('div');
   msg.classList.add('chat-message', sender);
-  msg.textContent = text;
+
+  if (sender === 'bot' && /<\/?[a-z][\s\S]*>/i.test(text)) {
+    // If the bot's message contains HTML, render it as HTML
+    msg.innerHTML = text;
+  } else {
+    // Otherwise, render as plain text (safe for user messages)
+    msg.textContent = text;
+  }
+
   chatBox.appendChild(msg);
   chatBox.scrollTop = chatBox.scrollHeight;
+}
+
+function showTypingIndicator() {
+  const chatBox = document.getElementById('chat-box');
+  if (document.getElementById('typing-indicator')) return; // Prevent duplicates
+
+  const typingDiv = document.createElement('div');
+  typingDiv.className = 'chat-message bot flex typing-indicator-container';
+  typingDiv.id = 'typing-indicator';
+
+  typingDiv.innerHTML = `
+    <div class="message-bubble typing-indicator">
+      <span></span>
+      <span></span>
+      <span></span>
+    </div> `;
+
+  chatBox.appendChild(typingDiv);
+  chatBox.scrollTop = chatBox.scrollHeight;
+}
+
+function removeTypingIndicator() {
+  try {
+    const typingIndicator = document.getElementById('typing-indicator');
+    if (typingIndicator) {
+      typingIndicator.remove();
+    }
+  } catch (error) {
+    removeTypingIndicator();
+    appendMessage('bot', 'Sorry, something went wrong.');
+    console.error('Remove typing indicator error:', error);
+  }
 }
 
 // -----------------------------
@@ -65,6 +106,8 @@ async function sendMessage() {
   let userId = localStorage.getItem('userId');
   let sessionId = localStorage.getItem('sessionId');
 
+  showTypingIndicator(); // Show typing indicator
+
   try {
     const response = await fetch(nextEndpoint, {
       method: 'POST',
@@ -77,8 +120,9 @@ async function sendMessage() {
     });
 
     const data = await response.json();
-    if (data.response) {
-      appendMessage('bot', data.response);
+    removeTypingIndicator();
+    if (data.response || data.html) {
+      appendMessage('bot', data.response || data.html);
     } else {
       appendMessage('bot', 'No response received.');
     }
@@ -100,6 +144,7 @@ async function sendMessage() {
       }
     }
   } catch (error) {
+    removeTypingIndicator();
     appendMessage('bot', 'Sorry, something went wrong.');
     console.error('Fetch error:', error);
   }
@@ -116,6 +161,7 @@ fetch("http://localhost:5001/chat/latest")
 // 🎯 Event Listener
 // -----------------------------
 
+
 document.getElementById('send-button').addEventListener('click', sendMessage);
 
 document.getElementById('message-input').addEventListener('keydown', function(e) {
@@ -131,7 +177,7 @@ document.getElementById('message-input').addEventListener('input', function() {
   this.style.overflowY = this.scrollHeight > 100 ? 'auto' : 'hidden';
 });
 
-// Optional: Open/close chat logic (keep as in your new design)
+// Open/close chat logic (keep as in your new design)
 document.getElementById('chat-toggle').addEventListener('click', () => {
   document.getElementById('chat-container').classList.add('active');
   document.getElementById('chat-toggle').classList.remove('pulse');
@@ -139,5 +185,17 @@ document.getElementById('chat-toggle').addEventListener('click', () => {
 });
 document.getElementById('close-chat').addEventListener('click', () => {
   document.getElementById('chat-container').classList.remove('active');
+});
+
+document.getElementById('close-chat').addEventListener('click', 
+function() {
+  document.getElementById('chat-container').classList.remove('active');
+  document.getElementById('chat-toggle').style.display = 'flex'; // Show the toggle button
+});
+
+// When chat-toggle is clicked, show chat and hide toggle
+document.getElementById('chat-toggle').addEventListener('click', function() {
+  document.getElementById('chat-container').classList.add('active');
+  this.style.display = 'none'; // Hide the toggle button
 });
 
