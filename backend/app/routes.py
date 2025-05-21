@@ -17,14 +17,17 @@ latest_response = {"message": ""}
 def receive_response():
     data = request.get_json()
     print("✅ Received from n8n:", data)
-    latest_response["message"] = data.get("message", "")
+    # latest_response["message"] = data.get("message", "")
+    latest_response["message"] = data.get("html") or data.get("message", "")
 
     # Save the bot's response to the database
     db = SessionLocal()
     try:
         session_id = data.get("sessionId")
         if session_id:
-            save_bot_message(db, session_id, latest_response["message"])
+            # Ensure HTML is a string and optionally sanitize/encode if needed
+            html_message = str(latest_response["message"])
+            save_bot_message(db, session_id, html_message)
             db.commit()
     except Exception as e:
         db.rollback()

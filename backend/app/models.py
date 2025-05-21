@@ -1,5 +1,5 @@
 from .database import Base
-from sqlalchemy import Column, String, DateTime, ForeignKey, Text
+from sqlalchemy import Column, String, DateTime, ForeignKey, Text, Boolean, JSON
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 import uuid
@@ -38,12 +38,24 @@ class UserInfo(Base):
 
 
 class FAQIntent(Base):
-    __tablename__ = "faq_intent"
+    __tablename__ = "faq_intents"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     intent_name = Column(String(100), nullable=False, unique=True)
-    user_input = Column(Text, nullable=False)
-    bot_response = Column(Text, nullable=False)
+
+    # Multiple examples (optional JSON array), can also stay Text if simpler
+    training_phrases = Column(JSON, nullable=False)
+
+    # Response detail and type
+    response_text = Column(Text, nullable=False)
+    response_type = Column(String(50), default="text")  # could be: text, html, card, etc.
+
     topic = Column(String(100), nullable=True)
+    tags = Column(JSON, nullable=True)  # Optional tags for better categorization
+
     source = Column(String(50), default="manual")
+    language = Column(String(10), default="en")  # ISO codes for i18n support
+
+    is_active = Column(Boolean, default=True)  # For soft delete / filtering
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)
+    updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
