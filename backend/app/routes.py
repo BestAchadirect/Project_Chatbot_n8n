@@ -17,8 +17,7 @@ latest_response = {"message": ""}
 def receive_response():
     data = request.get_json()
     print("✅ Received from n8n:", data)
-    # latest_response["message"] = data.get("message", "")
-    latest_response["message"] = data.get("html") or data.get("message", "")
+    latest_response["message"] = data.get("response", "") or data.get("message", "")
 
     # Save the bot's response to the database
     db = SessionLocal()

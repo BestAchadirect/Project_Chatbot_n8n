@@ -23,6 +23,13 @@ function getOrCreateLocalStorageItem(key, generatorFn) {
   return value;
 }
 
+function askQuestion(question) {
+  const input = document.getElementById('message-input');
+  input.value = question;
+  input.focus();
+  sendMessage();
+  window.askQuestion = askQuestion;
+}
 
 // -----------------------------
 // 🗂️ Session Initialization
@@ -43,34 +50,35 @@ function appendMessage(sender, text) {
   const msg = document.createElement('div');
   msg.classList.add('chat-message', sender);
 
-  if (sender === 'bot' && /<\/?[a-z][\s\S]*>/i.test(text)) {
-    // If the bot's message contains HTML, render it as HTML
-    msg.innerHTML = text;
+  if (sender === 'bot') {
+    let parsed = text;
+    // Try to parse twice if needed (for stringified JSON)
+    try {
+      if (typeof parsed === 'string') parsed = JSON.parse(parsed);
+      if (typeof parsed === 'string') parsed = JSON.parse(parsed);
+    } catch (e) {
+      parsed = null;
+    }
+
+    if (parsed && parsed.suggestions && Array.isArray(parsed.suggestions)) {
+      msg.innerHTML = `
+        <div class="faq-suggestions">
+          ${parsed.suggestions.map(s => {
+            let postbackValue = typeof s.postback === 'object'
+              ? encodeURIComponent(JSON.stringify(s.postback))
+              : s.postback.replace(/'/g, "\\'");
+            return `<span class="faq-suggestion" onclick="askQuestion(decodeURIComponent('${encodeURIComponent(postbackValue)}'))">${s.label}</span>`;
+          }).join('')}
+        </div>
+      `;
+    } else {
+      msg.textContent = typeof text === 'string' ? text : JSON.stringify(text);
+    }
   } else {
-    // Otherwise, render as plain text (safe for user messages)
     msg.textContent = text;
   }
 
   chatBox.appendChild(msg);
-  chatBox.scrollTop = chatBox.scrollHeight;
-}
-
-function showTypingIndicator() {
-  const chatBox = document.getElementById('chat-box');
-  if (document.getElementById('typing-indicator')) return; // Prevent duplicates
-
-  const typingDiv = document.createElement('div');
-  typingDiv.className = 'chat-message bot flex typing-indicator-container';
-  typingDiv.id = 'typing-indicator';
-
-  typingDiv.innerHTML = `
-    <div class="message-bubble typing-indicator">
-      <span></span>
-      <span></span>
-      <span></span>
-    </div> `;
-
-  chatBox.appendChild(typingDiv);
   chatBox.scrollTop = chatBox.scrollHeight;
 }
 
@@ -121,8 +129,8 @@ async function sendMessage() {
 
     const data = await response.json();
     removeTypingIndicator();
-    if (data.response || data.html) {
-      appendMessage('bot', data.response || data.html);
+    if (data.response) {
+      appendMessage('bot', data.response);
     } else {
       appendMessage('bot', 'No response received.');
     }
@@ -199,3 +207,13 @@ document.getElementById('chat-toggle').addEventListener('click', function() {
   this.style.display = 'none'; // Hide the toggle button
 });
 
+
+document.addEventListener('click', function(e) {
+  if (e.target.classList.contains('faq-suggestion')) {
+    const question = e.target.textContent;
+    const input = document.getElementById('message-input');
+    input.value = question;
+    input.focus();
+    sendMessage();
+  }
+});
