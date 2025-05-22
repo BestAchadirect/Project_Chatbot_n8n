@@ -3,7 +3,7 @@ from uuid import UUID
 from datetime import datetime, timezone
 from flask import request, jsonify, Blueprint, current_app
 from .database import db
-from .models import ChatSession, FAQIntent
+from .models import ChatSession, FAQIntent, UserInfo
 import uuid
 import requests
 
