@@ -1,9 +1,9 @@
 import re
 from uuid import UUID
 from datetime import datetime, timezone
-from flask import request, jsonify, Blueprint
-from .database import SessionLocal
-from .models import ChatSession, ChatMessage, UserInfo
+from flask import request, jsonify, Blueprint, current_app
+from .database import db
+from .models import ChatSession, FAQIntent
 import uuid
 import requests
 
@@ -20,19 +20,14 @@ def receive_response():
     latest_response["message"] = data.get("response", "") or data.get("message", "")
 
     # Save the bot's response to the database
-    db = SessionLocal()
     try:
         session_id = data.get("sessionId")
         if session_id:
             # Ensure HTML is a string and optionally sanitize/encode if needed
             html_message = str(latest_response["message"])
             save_bot_message(db, session_id, html_message)
-            db.commit()
     except Exception as e:
-        db.rollback()
         print(f"Error saving bot response: {e}")
-    finally:
-        db.close()
 
     return jsonify({"status": "received", "response": latest_response["message"]}), 200
 
@@ -51,22 +46,22 @@ def is_valid_email(email):
     return re.match(r"[^@]+@[^@]+\.[^@]+", email)
 
 def save_user_message(db, session_id, message):
-    user_message = ChatMessage(
+    user_message = ChatSession(
         session_id=session_id,
         sender="user",
         message=message,
         timestamp=datetime.now(timezone.utc)
     )
-    db.add(user_message)
+    db.session.add(user_message)
 
 def save_bot_message(db, session_id, message):
-    bot_message = ChatMessage(
+    bot_message = ChatSession(
         session_id=session_id,
         sender="bot",
         message=message,
         timestamp=datetime.now(timezone.utc)
     )
-    db.add(bot_message)
+    db.session.add(bot_message)
 
 def get_or_create_session(db, session_id, user_id):
     session = db.query(ChatSession).filter_by(session_id=session_id).first()
@@ -76,8 +71,8 @@ def get_or_create_session(db, session_id, user_id):
             user_id=user_id,
             started_at=datetime.now(timezone.utc)
         )
-        db.add(session)
-        db.commit()
+        db.session.add(session)
+        db.session.commit()
     return session
 
 def get_or_create_user(db, user_info):
@@ -89,15 +84,13 @@ def get_or_create_user(db, user_info):
             country=user_info["country"],
             created_at=datetime.now(timezone.utc)
         )
-        db.add(user)
-        db.commit()
+        db.session.add(user)
+        db.session.commit()
     return user
 
 @api_routes.route("/api/session", methods=["POST"])
 def handle_session():
-    db = None
     try:
-        db = SessionLocal()
         data = request.get_json()
         session_id = data.get("sessionId", "")
         user_id = data.get("userId", "")
@@ -140,7 +133,6 @@ def handle_session():
             else:
                 bot_response = "No response from agent."
             save_bot_message(db, session_id, bot_response)
-            db.commit()
             return jsonify({"response": bot_response, "nextEndpoint": "/api/session"})
 
         # Parse and validate user info from input
@@ -155,21 +147,19 @@ def handle_session():
                     country=user_info["country"],
                     created_at=datetime.now(timezone.utc)
                 )
-                db.add(new_user)
-                db.commit()
+                db.session.add(new_user)
+                db.session.commit()
                 user = new_user
             else:
                 user = existing_user
 
             # Link session to user
             session.user_info_id = user.id
-            db.commit()
+            db.session.commit()
 
             # Respond success
             bot_response = "✅ Thanks! We've saved your information. How can I assist you today?"
             save_bot_message(db, session_id, bot_response)
-            db.commit()
-
             return jsonify({
                 "response": bot_response,
                 "nextEndpoint": "/api/session"
@@ -182,16 +172,55 @@ def handle_session():
                 "Format it like this: `John Smith, john@example.com, Canada`"
             )
             save_bot_message(db, session_id, bot_response)
-            db.commit()
             return jsonify({"response": bot_response, "sessionId": str(session_id), "userId": user_id})
 
     except Exception as e:
-        if db:
-            db.rollback()
         return jsonify({"error": str(e)}), 500
-    finally:
-        if db:
-            db.close()
+
+@api_routes.route('/chat', methods=['POST'])
+def chat():
+    data = request.json
+    session_id = data.get('sessionId', str(uuid.uuid4()))
+    message = data.get('message')
+    
+    if not message:
+        return jsonify({'error': 'Message is required'}), 400
+    
+    # Save user message
+    chat_session = ChatSession(
+        session_id=session_id,
+        message=message,
+        sender='user'
+    )
+    db.session.add(chat_session)
+    db.session.commit()
+    
+    # Forward to n8n webhook
+    try:
+        response = requests.post(
+            current_app.config['N8N_WEBHOOK_URL'],
+            json={'message': message, 'sessionId': session_id}
+        )
+        response.raise_for_status()
+        return response.json()
+    except requests.exceptions.RequestException as e:
+        return jsonify({'error': str(e)}), 500
+
+@api_routes.route('/faqs', methods=['GET'])
+def get_faqs():
+    topic = request.args.get('topic')
+    query = FAQIntent.query
+    
+    if topic:
+        query = query.filter(FAQIntent.topic.ilike(f'%{topic}%'))
+    
+    faqs = query.all()
+    return jsonify([faq.to_dict() for faq in faqs])
+
+@api_routes.route('/topics', methods=['GET'])
+def get_topics():
+    topics = db.session.query(FAQIntent.topic).distinct().all()
+    return jsonify([topic[0] for topic in topics])
 
 
 

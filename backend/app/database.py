@@ -1,7 +1,12 @@
+from flask_sqlalchemy import SQLAlchemy
+from flask_migrate import Migrate
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, declarative_base
 import os
 from dotenv import load_dotenv
+
+db = SQLAlchemy()
+migrate = Migrate()
 
 # Load environment variables from .env
 load_dotenv()
@@ -12,3 +17,10 @@ DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://postgres:postgres@localho
 engine = create_engine(DATABASE_URL)
 SessionLocal = sessionmaker(bind=engine)
 Base = declarative_base()
+
+def init_db(app):
+    db.init_app(app)
+    migrate.init_app(app, db)
+    
+    with app.app_context():
+        db.create_all()

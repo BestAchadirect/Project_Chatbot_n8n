@@ -1,15 +1,22 @@
 from flask import Flask
 from flask_cors import CORS
-from .routes import api_routes, bp as chat_bp
+from .config import Config
+from .database import db
+from .routes import bp, api_routes
 
 
 def create_app():
     app = Flask(__name__)
-    # Allow requests from http://localhost:3000
-    CORS(app, resources={r"/*": {"origins": "http://localhost:3000"}})
-
+    app.config.from_object(Config)
+    
+    CORS(api_routes, origins=["http://localhost:3000"])
+    CORS(bp, origins=["http://localhost:3000"])
+    # Initialize database
+    db.init_app(app) 
+       
+    # Register blueprints
     app.register_blueprint(api_routes)
-    app.register_blueprint(chat_bp)
-
+    app.register_blueprint(bp)
+    
     return app
 

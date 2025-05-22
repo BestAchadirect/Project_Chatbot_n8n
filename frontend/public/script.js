@@ -95,6 +95,19 @@ function removeTypingIndicator() {
   }
 }
 
+function showTypingIndicator() {
+  const chatBox = document.getElementById('chat-box');
+  let indicator = document.getElementById('typing-indicator');
+  if (!indicator) {
+    indicator = document.createElement('div');
+    indicator.id = 'typing-indicator';
+    indicator.className = 'chat-message bot';
+    indicator.textContent = '...'; // Or use a spinner/animation
+    chatBox.appendChild(indicator);
+    chatBox.scrollTop = chatBox.scrollHeight;
+  }
+}
+
 // -----------------------------
 // 🚀 Chat API Logic
 // -----------------------------
