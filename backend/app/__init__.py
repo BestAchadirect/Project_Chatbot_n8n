@@ -2,7 +2,8 @@ from flask import Flask
 from flask_cors import CORS
 from .config import Config
 from .database import db, migrate
-from .routes import bp, api_routes
+from .general_routes import bp, api_routes
+from app.routes.product_routes import product_bp, klevu_service
 
 
 def create_app():
@@ -15,6 +16,9 @@ def create_app():
     db.init_app(app)
     migrate.init_app(app, db)
 
+    # Initialize Klevu service with app config
+    klevu_service.init_app(app)
+
     # Create tables within app context
     with app.app_context():
         db.create_all()
@@ -22,6 +26,7 @@ def create_app():
     # Register blueprints
     app.register_blueprint(api_routes)
     app.register_blueprint(bp)
+    app.register_blueprint(product_bp, url_prefix='/api/products')
     
     return app
 
