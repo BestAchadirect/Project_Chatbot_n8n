@@ -3,7 +3,7 @@ from uuid import UUID
 from datetime import datetime, timezone
 from flask import request, jsonify, Blueprint, current_app
 from .database import db
-from .models import ChatSession, FAQIntent, UserInfo
+from .models import ChatSession, ChatMessage, FAQIntent, UserInfo
 import uuid
 import requests
 
@@ -46,22 +46,26 @@ def is_valid_email(email):
     return re.match(r"[^@]+@[^@]+\.[^@]+", email)
 
 def save_user_message(db, session_id, message):
-    user_message = ChatSession(
+    """Persist a user message to the database."""
+    user_message = ChatMessage(
         session_id=session_id,
         sender="user",
         message=message,
         timestamp=datetime.now(timezone.utc)
     )
     db.session.add(user_message)
+    db.session.commit()
 
 def save_bot_message(db, session_id, message):
-    bot_message = ChatSession(
+    """Persist a bot message to the database."""
+    bot_message = ChatMessage(
         session_id=session_id,
         sender="bot",
         message=message,
         timestamp=datetime.now(timezone.utc)
     )
     db.session.add(bot_message)
+    db.session.commit()
 
 def get_or_create_session(db, session_id, user_id):
     session = db.query(ChatSession).filter_by(session_id=session_id).first()
