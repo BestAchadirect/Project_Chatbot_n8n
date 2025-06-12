@@ -9,7 +9,6 @@ from app.api_routes import api_routes
 
 # Load environment variables from .env file
 load_dotenv(os.path.join(os.path.dirname(__file__), '../workflows/.env'))
-
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 try:

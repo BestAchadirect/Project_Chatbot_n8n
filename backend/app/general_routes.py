@@ -70,7 +70,7 @@ def save_bot_message(db, session_id, message):
     db.session.commit()
 
 def get_or_create_session(db, session_id, user_id):
-    session = db.query(ChatSession).filter_by(session_id=session_id).first()
+    session = db.session.query(ChatSession).filter_by(session_id=session_id).first()
     if not session:
         session = ChatSession(
             session_id=session_id,
@@ -82,7 +82,7 @@ def get_or_create_session(db, session_id, user_id):
     return session
 
 def get_or_create_user(db, user_info):
-    user = db.query(UserInfo).filter_by(email=user_info["email"]).first()
+    user = db.session.query(UserInfo).filter_by(email=user_info["email"]).first()
     if not user:
         user = UserInfo(
             name=user_info["name"],
@@ -203,7 +203,7 @@ def chat():
 @api_routes.route('/faqs', methods=['GET'])
 def get_faqs():
     topic = request.args.get('topic')
-    query = FAQIntent.query
+    query = db.session.query(FAQIntent)
     
     if topic:
         query = query.filter(FAQIntent.topic.ilike(f'%{topic}%'))

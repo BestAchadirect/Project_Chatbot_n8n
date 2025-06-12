@@ -130,6 +130,16 @@ async function sendMessage() {
   let userId = localStorage.getItem('userId');
   let sessionId = localStorage.getItem('sessionId');
 
+  // Generate default values if null
+  if (!userId) {
+    userId = `guest_${Math.random().toString(36).substring(2, 10)}`;
+    localStorage.setItem('userId', userId);
+  }
+  if (!sessionId) {
+    sessionId = crypto.randomUUID(); // Generate a UUID
+    localStorage.setItem('sessionId', sessionId);
+  }
+
   showTypingIndicator(); // Show typing indicator
 
   try {
@@ -140,8 +150,9 @@ async function sendMessage() {
         chatInput: message,
         userId: userId,
         sessionId: sessionId,
-      })
+      }),
     });
+
     console.log("Request payload:", { chatInput: message, userId, sessionId });
 
     if (!response.ok) {
@@ -149,14 +160,14 @@ async function sendMessage() {
     }
 
     const data = await response.json();
-    console.log("Response from backend:", data); // Debugging log
+    console.log("Response from backend:", data);
 
     removeTypingIndicator();
     if (data.response) {
       appendMessage('bot', data.response);
     } else {
-      appendMessage('bot', 'No response received.'); // Handle missing response
-      console.warn("No 'response' field in backend response:", data); // Debugging log
+      appendMessage('bot', 'No response received.');
+      console.warn("No 'response' field in backend response:", data);
     }
 
     if (data.sessionId) {
