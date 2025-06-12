@@ -102,7 +102,11 @@ function showTypingIndicator() {
     indicator = document.createElement('div');
     indicator.id = 'typing-indicator';
     indicator.className = 'chat-message bot';
-    indicator.textContent = '...'; // Or use a spinner/animation
+    indicator.innerHTML = `
+      <div class="typing-indicator">
+        <span></span><span></span><span></span>
+      </div>
+    `;
     chatBox.appendChild(indicator);
     chatBox.scrollTop = chatBox.scrollHeight;
   }
@@ -123,7 +127,6 @@ async function sendMessage() {
   input.value = '';
   input.style.height = 'auto';
 
-  // Retrieve userId and sessionId from localStorage
   let userId = localStorage.getItem('userId');
   let sessionId = localStorage.getItem('sessionId');
 
@@ -139,13 +142,21 @@ async function sendMessage() {
         sessionId: sessionId,
       })
     });
+    console.log("Request payload:", { chatInput: message, userId, sessionId });
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
 
     const data = await response.json();
+    console.log("Response from backend:", data); // Debugging log
+
     removeTypingIndicator();
     if (data.response) {
       appendMessage('bot', data.response);
     } else {
-      appendMessage('bot', 'No response received.');
+      appendMessage('bot', 'No response received.'); // Handle missing response
+      console.warn("No 'response' field in backend response:", data); // Debugging log
     }
 
     if (data.sessionId) {
@@ -167,7 +178,7 @@ async function sendMessage() {
   } catch (error) {
     removeTypingIndicator();
     appendMessage('bot', 'Sorry, something went wrong.');
-    console.error('Fetch error:', error);
+    console.error('Fetch error:', error); // Debugging log
   }
 }
 
