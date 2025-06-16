@@ -27,8 +27,14 @@ function askQuestion(question) {
   const input = document.getElementById('message-input');
   input.value = question;
   input.focus();
-  sendMessage();
-  window.askQuestion = askQuestion;
+
+  // Prevent duplicate calls by disabling the button temporarily
+  const sendButton = document.getElementById('send-button');
+  sendButton.disabled = true;
+
+  sendMessage().finally(() => {
+    sendButton.disabled = false; // Re-enable the button after the message is sent
+  });
 }
 
 // -----------------------------
@@ -40,6 +46,7 @@ function initializeSession() {
   const sessionId = getOrCreateLocalStorageItem('sessionId', generateSessionId);
   return { userId, sessionId };
 }
+
 
 // -----------------------------
 // 💬 Chat Rendering
@@ -62,12 +69,18 @@ function appendMessage(sender, text) {
 
     if (parsed && parsed.suggestions && Array.isArray(parsed.suggestions)) {
       msg.innerHTML = `
+        <div class="faq-text">${parsed.text ? parsed.text : ''}</div>
         <div class="faq-suggestions">
           ${parsed.suggestions.map(s => {
-            let postbackValue = typeof s.postback === 'object'
-              ? encodeURIComponent(JSON.stringify(s.postback))
-              : s.postback.replace(/'/g, "\\'");
-            return `<span class="faq-suggestion" onclick="askQuestion(decodeURIComponent('${encodeURIComponent(postbackValue)}'))">${s.label}</span>`;
+            let postbackValue;
+            if (typeof s.postback === 'object') {
+              postbackValue = encodeURIComponent(JSON.stringify(s.postback));
+            } else if (typeof s.postback === 'string') {
+              postbackValue = s.postback.replace(/'/g, "\\'");
+            } else {
+              postbackValue = String(s.postback);
+            }
+            return `<span class="faq-suggestion" data-postback="${postbackValue}">${s.label}</span>`;
           }).join('')}
         </div>
       `;
@@ -79,6 +92,22 @@ function appendMessage(sender, text) {
   }
 
   chatBox.appendChild(msg);
+  chatBox.scrollTop = chatBox.scrollHeight;
+}
+
+function showTypingIndicator() {
+  const chatBox = document.getElementById('chat-box');
+  const typingIndicator = document.createElement('div');
+  typingIndicator.id = 'typing-indicator';
+  typingIndicator.classList.add('chat-message', 'bot', 'typing-indicator');
+  typingIndicator.innerHTML = `
+    <div class="typing-indicator">
+      <span></span>
+      <span></span>
+      <span></span>
+    </div>
+  `;
+  chatBox.appendChild(typingIndicator);
   chatBox.scrollTop = chatBox.scrollHeight;
 }
 
@@ -170,50 +199,54 @@ fetch("http://localhost:5001/chat/latest")
 // -----------------------------
 
 
-document.getElementById('send-button').addEventListener('click', sendMessage);
+const sendButton = document.getElementById('send-button');
+if (sendButton) {
+  sendButton.addEventListener('click', sendMessage);
+}
 
-document.getElementById('message-input').addEventListener('keydown', function(e) {
-  if (e.key === 'Enter' && !e.shiftKey) {
-    e.preventDefault();
-    sendMessage();
-  }
-});
+const messageInput = document.getElementById('message-input');
+if (messageInput) {
+  messageInput.addEventListener('keydown', function(e) {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      sendMessage();
+    }
+  });
 
-document.getElementById('message-input').addEventListener('input', function() {
-  this.style.height = 'auto';
-  this.style.height = this.scrollHeight + 'px';
-  this.style.overflowY = this.scrollHeight > 100 ? 'auto' : 'hidden';
-});
+  messageInput.addEventListener('input', function() {
+    this.style.height = 'auto';
+    this.style.height = this.scrollHeight + 'px';
+    this.style.overflowY = this.scrollHeight > 100 ? 'auto' : 'hidden';
+  });
+}
 
 // Open/close chat logic (keep as in your new design)
-document.getElementById('chat-toggle').addEventListener('click', () => {
-  document.getElementById('chat-container').classList.add('active');
-  document.getElementById('chat-toggle').classList.remove('pulse');
-  document.getElementById('message-input').focus();
-});
-document.getElementById('close-chat').addEventListener('click', () => {
-  document.getElementById('chat-container').classList.remove('active');
-});
+const chatToggle = document.getElementById('chat-toggle');
+const chatContainer = document.getElementById('chat-container');
+const closeChat = document.getElementById('close-chat');
 
-document.getElementById('close-chat').addEventListener('click', 
-function() {
-  document.getElementById('chat-container').classList.remove('active');
-  document.getElementById('chat-toggle').style.display = 'flex'; // Show the toggle button
-});
+if (chatToggle && chatContainer && messageInput) {
+  chatToggle.addEventListener('click', function() {
+    chatContainer.classList.add('active');
+    chatToggle.classList.remove('pulse');
+    messageInput.focus();
+    this.style.display = 'none'; // Hide the toggle button
+  });
+}
 
-// When chat-toggle is clicked, show chat and hide toggle
-document.getElementById('chat-toggle').addEventListener('click', function() {
-  document.getElementById('chat-container').classList.add('active');
-  this.style.display = 'none'; // Hide the toggle button
-});
+if (closeChat && chatContainer) {
+  closeChat.addEventListener('click', function() {
+    chatContainer.classList.remove('active');
+    if (chatToggle) {
+      chatToggle.style.display = 'flex'; // Show the toggle button
+    }
+  });
+}
 
 
-document.addEventListener('click', function(e) {
+document.addEventListener('click', function (e) {
   if (e.target.classList.contains('faq-suggestion')) {
-    const question = e.target.textContent;
-    const input = document.getElementById('message-input');
-    input.value = question;
-    input.focus();
-    sendMessage();
+    const postbackValue = decodeURIComponent(e.target.getAttribute('data-postback'));
+    askQuestion(postbackValue);
   }
 });
