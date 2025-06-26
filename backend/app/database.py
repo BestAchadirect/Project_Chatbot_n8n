@@ -8,7 +8,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # Read from .env or fallback to Docker default
-DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://postgres:postgres@localhost:5432/mydb")
+DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://postgres:postgres@localhost:5433/testdb")
 
 # Show which database you're connecting to
 print(f"[INFO] Connecting to database: {DATABASE_URL}")
