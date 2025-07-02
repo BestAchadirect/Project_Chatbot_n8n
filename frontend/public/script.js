@@ -2,25 +2,28 @@
 // 🔧 Utility Functions
 // -----------------------------
 
-function generateUserId() {
-  return `guest_${Math.random().toString(36).substring(2, 15)}`;
-}
-
 function generateSessionId() {
-  return crypto.randomUUID();
-}
-
-function isValidUUID(uuid) {
-  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(uuid);
-}
-
-function getOrCreateLocalStorageItem(key, generatorFn) {
-  let value = localStorage.getItem(key);
-  if (!value || (key === 'sessionId' && !isValidUUID(value))) {
-    value = generatorFn();
-    localStorage.setItem(key, value);
+  // Generate a random 20-character alphanumeric string (varchar-like)
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+  let sessionId = '';
+  for (let i = 0; i < 20; i++) {
+    sessionId += chars.charAt(Math.floor(Math.random() * chars.length));
   }
-  return value;
+  return sessionId;
+}
+
+function isValidSessionId(id) {
+  // Check if id is a 20-character alphanumeric string
+  return typeof id === 'string' && /^[A-Za-z0-9]{20}$/.test(id);
+}
+
+function getOrCreateSessionId() {
+  let sessionId = sessionStorage.getItem('sessionId');
+  if (!sessionId || !isValidSessionId(sessionId)) {
+    sessionId = generateSessionId();
+    sessionStorage.setItem('sessionId', sessionId);
+  }
+  return sessionId;
 }
 
 function askQuestion(question) {
@@ -42,11 +45,9 @@ function askQuestion(question) {
 // -----------------------------
 
 function initializeSession() {
-  const userId = getOrCreateLocalStorageItem('userId', generateUserId);
-  const sessionId = getOrCreateLocalStorageItem('sessionId', generateSessionId);
-  return { userId, sessionId };
+  const sessionId = getOrCreateSessionId();
+  return { sessionId };
 }
-
 
 // -----------------------------
 // 💬 Chat Rendering
@@ -57,39 +58,8 @@ function appendMessage(sender, text) {
   const msg = document.createElement('div');
   msg.classList.add('chat-message', sender);
 
-  if (sender === 'bot') {
-    let parsed = text;
-    // Try to parse twice if needed (for stringified JSON)
-    try {
-      if (typeof parsed === 'string') parsed = JSON.parse(parsed);
-      if (typeof parsed === 'string') parsed = JSON.parse(parsed);
-    } catch (e) {
-      parsed = null;
-    }
-
-    if (parsed && parsed.suggestions && Array.isArray(parsed.suggestions)) {
-      msg.innerHTML = `
-        <div class="faq-text">${parsed.text ? parsed.text : ''}</div>
-        <div class="faq-suggestions">
-          ${parsed.suggestions.map(s => {
-            let postbackValue;
-            if (typeof s.postback === 'object') {
-              postbackValue = encodeURIComponent(JSON.stringify(s.postback));
-            } else if (typeof s.postback === 'string') {
-              postbackValue = s.postback.replace(/'/g, "\\'");
-            } else {
-              postbackValue = String(s.postback);
-            }
-            return `<span class="faq-suggestion" data-postback="${postbackValue}">${s.label}</span>`;
-          }).join('')}
-        </div>
-      `;
-    } else {
-      msg.textContent = typeof text === 'string' ? text : JSON.stringify(text);
-    }
-  } else {
-    msg.textContent = text;
-  }
+  // Only render plain text, no FAQ suggestions
+  msg.textContent = typeof text === 'string' ? text : JSON.stringify(text);
 
   chatBox.appendChild(msg);
   chatBox.scrollTop = chatBox.scrollHeight;
@@ -128,71 +98,53 @@ function removeTypingIndicator() {
 // 🚀 Chat API Logic
 // -----------------------------
 
-let nextEndpoint = 'http://localhost:5001/api/session'; // Default endpoint
-
 async function sendMessage() {
   const input = document.getElementById('message-input');
   const message = input.value.trim();
   if (!message) return;
 
-  appendMessage('user', message); // Append the user's message to the UI
+  appendMessage('user', message);
   input.value = '';
   input.style.height = 'auto';
 
-  // Retrieve userId and sessionId from localStorage
-  let userId = localStorage.getItem('userId');
-  let sessionId = localStorage.getItem('sessionId');
+  // Retrieve sessionId from sessionStorage
+  let sessionId = sessionStorage.getItem('sessionId');
+  if (!sessionId || !isValidSessionId(sessionId)) {
+    sessionId = generateSessionId();
+    sessionStorage.setItem('sessionId', sessionId);
+  }
 
-  showTypingIndicator(); // Show typing indicator
+  showTypingIndicator();
 
   try {
-    const response = await fetch(nextEndpoint, {
+    // Send message to n8n workflow (replace with your actual n8n endpoint)
+    const response = await fetch('http://localhost:5678/webhook-test/returning-user', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        chatInput: message,
-        userId: userId,
         sessionId: sessionId,
+        message: message
       })
     });
 
-    const data = await response.json();
+    if (!response.ok) throw new Error('Network response was not ok');
+    await response.json();
+
     removeTypingIndicator();
-    if (data.response) {
+
+    // Display the bot's response in the chat
+    if (data && data.response) {
       appendMessage('bot', data.response);
     } else {
       appendMessage('bot', 'No response received.');
     }
 
-    if (data.sessionId) {
-      sessionId = data.sessionId;
-      localStorage.setItem('sessionId', sessionId);
-    }
-    if (data.userId) {
-      userId = data.userId;
-      localStorage.setItem('userId', userId);
-    }
-
-    if (data.nextEndpoint) {
-      if (data.nextEndpoint.startsWith('/api/')) {
-        nextEndpoint = `http://localhost:5001${data.nextEndpoint}`;
-      } else {
-        nextEndpoint = `http://localhost:5678${data.nextEndpoint}`;
-      }
-    }
   } catch (error) {
     removeTypingIndicator();
     appendMessage('bot', 'Sorry, something went wrong.');
-    console.error('Fetch error:', error);
+    console.error('n8n error:', error);
   }
 }
-
-// Return latest message 
-fetch("http://localhost:5001/chat/latest")
-  .then(res => res.json())
-  .then(data => {
-    console.log("Bot:", data.message);
-  });
 
 // -----------------------------
 // 🎯 Event Listener
@@ -243,10 +195,4 @@ if (closeChat && chatContainer) {
   });
 }
 
-
-document.addEventListener('click', function (e) {
-  if (e.target.classList.contains('faq-suggestion')) {
-    const postbackValue = decodeURIComponent(e.target.getAttribute('data-postback'));
-    askQuestion(postbackValue);
-  }
-});
+// Removed FAQ suggestion click handler
