@@ -117,7 +117,6 @@ async function sendMessage() {
   showTypingIndicator();
 
   try {
-    // Send message to n8n workflow (replace with your actual n8n endpoint)
     const response = await fetch('http://localhost:5678/webhook-test/returning-user', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -128,12 +127,14 @@ async function sendMessage() {
     });
 
     if (!response.ok) throw new Error('Network response was not ok');
-    await response.json();
+    const data = await response.json(); // <-- assign to variable
 
     removeTypingIndicator();
 
     // Display the bot's response in the chat
-    if (data && data.response) {
+    if (Array.isArray(data) && data[0] && data[0].output) {
+      appendMessage('bot', data[0].output);
+    } else if (data && data.response) {
       appendMessage('bot', data.response);
     } else {
       appendMessage('bot', 'No response received.');
