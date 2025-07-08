@@ -2,124 +2,6 @@
   "name": "AI agent chat",
   "nodes": [
     {
-      "parameters": {},
-      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
-      "typeVersion": 1.3,
-      "position": [
-        -1360,
-        680
-      ],
-      "id": "29248641-a5d1-42d4-b4c3-585d8be47f98",
-      "name": "Simple Memory"
-    },
-    {
-      "parameters": {
-        "operation": "executeQuery",
-        "query": "= SELECT question, answer, topic FROM faqs \nWHERE topic ILIKE '{{$json[\"output\"]}}' \nLIMIT 1;\n",
-        "additionalFields": {}
-      },
-      "id": "92eb5709-dfd6-4975-adad-ea2dd5e6aafd",
-      "name": "Search FAQ",
-      "type": "n8n-nodes-base.postgres",
-      "typeVersion": 1,
-      "position": [
-        -1080,
-        440
-      ],
-      "alwaysOutputData": true,
-      "executeOnce": false,
-      "credentials": {
-        "postgres": {
-          "id": "HcMp39iqfHAxWnSU",
-          "name": "Postgres account"
-        }
-      }
-    },
-    {
-      "parameters": {
-        "conditions": {
-          "number": [],
-          "string": [
-            {
-              "value1": "={{$json[\"answer\"]}}",
-              "operation": "isNotEmpty"
-            }
-          ]
-        }
-      },
-      "id": "18285f6c-0057-4a7d-8675-1e033723f4fe",
-      "name": "FAQ Found?",
-      "type": "n8n-nodes-base.if",
-      "typeVersion": 1,
-      "position": [
-        -620,
-        440
-      ]
-    },
-    {
-      "parameters": {
-        "operation": "executeQuery",
-        "query": "SELECT DISTINCT topic FROM faqs ORDER BY topic;",
-        "additionalFields": {}
-      },
-      "id": "a851f2d5-5be5-4b82-8414-aad0e9ca541d",
-      "name": "Get Topics",
-      "type": "n8n-nodes-base.postgres",
-      "typeVersion": 1,
-      "position": [
-        -340,
-        620
-      ],
-      "credentials": {
-        "postgres": {
-          "id": "HcMp39iqfHAxWnSU",
-          "name": "Postgres account"
-        }
-      }
-    },
-    {
-      "parameters": {
-        "jsCode": "const topics = [\n  \"Shipping & Delivery\",\n  \"Returns & Refunds\",\n  \"Payment Options\"\n];\n\nconst blocks = topics.map(topic => {\n  return {\n    type: \"box\",\n    text: topic,\n    action: {\n      type: \"send_message\",\n      message: topic\n    }\n  };\n});\n\nreturn [{\n  json: {\n    text: \"Sorry, I couldn't find an answer. Please select a topic:\",\n    blocks: blocks\n  }\n}];"
-      },
-      "id": "a455d6ae-808d-4f1a-a06f-5e1ef4c7bf80",
-      "name": "Format Topics as Buttons",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 1,
-      "position": [
-        -80,
-        620
-      ]
-    },
-    {
-      "parameters": {
-        "options": {
-          "responseKey": "answer"
-        }
-      },
-      "type": "n8n-nodes-base.respondToWebhook",
-      "typeVersion": 1.1,
-      "position": [
-        -80,
-        420
-      ],
-      "id": "c0aa3b71-f3f3-441e-bc5a-07d425f02318",
-      "name": "Respond to Webhook",
-      "alwaysOutputData": false
-    },
-    {
-      "parameters": {
-        "options": {}
-      },
-      "type": "n8n-nodes-base.respondToWebhook",
-      "typeVersion": 1.1,
-      "position": [
-        200,
-        620
-      ],
-      "id": "3fa6f99a-b461-4347-9d69-504309205962",
-      "name": "Respond to Webhook1"
-    },
-    {
       "parameters": {
         "options": {}
       },
@@ -127,8 +9,8 @@
       "name": "OpenAI Chat Model1",
       "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
       "position": [
-        -1540,
-        680
+        -2440,
+        1100
       ],
       "typeVersion": 1,
       "credentials": {
@@ -141,67 +23,106 @@
     {
       "parameters": {
         "promptType": "define",
-        "text": "=You are an assistant for customers at AchaDirect, a wholesale body jewelry company. Given a user message, return only one of the following predefined topics that best matches the user's intent:\n\n- Contact Information  \n- Communication  \n- Product Quality  \n- Pricing & Currency  \n- Order Requirements  \n- Discounts & Promotions  \n- Payment Options  \n- Product Sampling  \n- Shipping & Delivery  \n- Trade Terms  \n- Taxes & Import Fees  \n- Returns & Refunds\n\nIf none of the topics match the user's message, respond with exactly: No intent matched\n\nMessage: \"{{ $json.body.chatInput }}\"\n\nOnly respond with the matching topic name, or \"No intent matched\" if there is no relevant intent.",
-        "options": {}
+        "text": "={{ $json.body.message }}",
+        "options": {
+          "systemMessage": "You are a helpful assistant for Achadirect. Answer the user's question \nclearly and politely. Only use the information in the provided content\nin the database.\n\nIf you cannot answer based on the content, say: \"I'm sorry, I couldn't find that information in our database.\"\n\nreturn a JSON object describing the type of the response.\nRespond in the following format:\n\n{\n  \"type\": \"<type>\",\n  \"data\": {\n    \"markdown\": \"<original_answer_here>\"\n  }\n}\n\nDo not invent content. Simply classify and wrap the response.\n"
+        }
       },
       "id": "d6a3ce04-11d1-442e-af15-351652e57561",
       "name": "AI Agent1",
       "type": "@n8n/n8n-nodes-langchain.agent",
       "position": [
-        -1480,
-        440
+        -2300,
+        840
       ],
-      "typeVersion": 1.6
-    },
-    {
-      "parameters": {
-        "jsCode": "return [\n  {\n    json: {\n      text: $json.answer\n    }\n  }\n];"
-      },
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
-        -340,
-        420
-      ],
-      "id": "97c343a3-fc71-4d69-b83c-89aabc599417",
-      "name": "Code1"
+      "typeVersion": 1.6,
+      "retryOnFail": false,
+      "alwaysOutputData": true
     },
     {
       "parameters": {
         "httpMethod": "POST",
-        "path": "chat",
+        "path": "returning-user",
         "responseMode": "lastNode",
-        "responseData": "allEntries",
-        "options": {}
+        "options": {
+          "allowedOrigins": "*"
+        }
       },
       "id": "a3df8ab6-a255-4263-ba89-782ba45ca2b4",
-      "name": "Webhook - Chat",
+      "name": "Webhook - Incoming Message",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 1,
       "position": [
-        -2940,
-        440
+        -2580,
+        840
       ],
       "webhookId": "5efe0794-798c-47b1-b22d-8510a26048c2"
     },
     {
       "parameters": {
-        "operation": "executeQuery",
-        "query": "INSERT INTO chat_sessions (session_id, message, sender) VALUES ('{{$json[\"sessionId\"]}}', '{{$json[\"answer\"]}}', 'bot');",
-        "additionalFields": {}
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ $('Webhook - Incoming Message').item.json.body.sessionId }}"
       },
-      "name": "Log Bot Response1",
-      "type": "n8n-nodes-base.postgres",
-      "typeVersion": 1,
+      "type": "@n8n/n8n-nodes-langchain.memoryPostgresChat",
+      "typeVersion": 1.3,
       "position": [
-        -860,
-        440
+        -2260,
+        1100
       ],
-      "id": "fbdd3687-5332-482b-970f-05c68c006ec0",
+      "id": "74f226fa-e5f2-405c-9f8a-1d5616ab3761",
+      "name": "Postgres Chat Memory",
       "credentials": {
         "postgres": {
-          "id": "HcMp39iqfHAxWnSU",
-          "name": "Postgres account"
+          "id": "Y3Ieky0Fok6gKOVO",
+          "name": "Postgres account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "retrieve-as-tool",
+        "toolName": "company_faq",
+        "toolDescription": "Work with the data in Supabase vector store",
+        "tableName": {
+          "__rl": true,
+          "value": "documents",
+          "mode": "list",
+          "cachedResultName": "documents"
+        },
+        "topK": 20,
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.vectorStoreSupabase",
+      "typeVersion": 1,
+      "position": [
+        -2120,
+        1120
+      ],
+      "id": "f2cdd9fb-c83b-45ff-b021-bdeb6949faad",
+      "name": "Supabase Vector Store",
+      "credentials": {
+        "supabaseApi": {
+          "id": "kDUXmqQtM7DMW5gn",
+          "name": "Supabase vector storage"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.embeddingsOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        -2080,
+        1300
+      ],
+      "id": "3936b544-2a3a-4861-9993-a9545d72c775",
+      "name": "Embeddings OpenAI",
+      "credentials": {
+        "openAiApi": {
+          "id": "plLcvv2UWU9qivEj",
+          "name": "OpenAi account"
         }
       }
     },
@@ -212,222 +133,169 @@
       "type": "@n8n/n8n-nodes-langchain.chatTrigger",
       "typeVersion": 1.1,
       "position": [
-        -2960,
-        220
+        -2860,
+        840
       ],
-      "id": "16f2b9a6-032e-46a9-a1df-85708c8d5fb8",
+      "id": "97269d78-0b4d-40de-8530-7d67c74ea2b5",
       "name": "When chat message received",
-      "webhookId": "f630bf96-a2f0-470d-ad25-95ce94f8242e"
+      "webhookId": "fabe1c8b-d765-41d7-a1e3-81168dcf46c9"
     },
     {
       "parameters": {
-        "mode": "combineBySql"
+        "operation": "download",
+        "fileId": {
+          "__rl": true,
+          "value": "1NZsn9BMwojU7LMaCac2UhBrPLMrskXp_",
+          "mode": "list",
+          "cachedResultName": "Klevu_data - Sheet1.csv",
+          "cachedResultUrl": "https://drive.google.com/file/d/1NZsn9BMwojU7LMaCac2UhBrPLMrskXp_/view?usp=drivesdk"
+        },
+        "options": {}
       },
-      "type": "n8n-nodes-base.merge",
+      "type": "n8n-nodes-base.googleDrive",
       "typeVersion": 3,
       "position": [
-        -1680,
-        440
+        -2300,
+        1540
       ],
-      "id": "35ad7169-cd40-4906-8165-4b66f217b7d8",
-      "name": "Merge"
-    },
-    {
-      "parameters": {
-        "operation": "executeQuery",
-        "query": "= SELECT session_id FROM chat_sessions\nWHERE session_id = '{{ $json.body.sessionId }}';\n",
-        "additionalFields": {}
-      },
-      "name": "Check Session",
-      "type": "n8n-nodes-base.postgres",
-      "typeVersion": 1,
-      "position": [
-        -2660,
-        440
-      ],
-      "id": "532fca12-6c3f-4c2a-834e-e59523c15a29",
-      "alwaysOutputData": true,
+      "id": "ccc63d99-7ad8-4edf-b260-9c657a910c67",
+      "name": "Google Drive",
       "credentials": {
-        "postgres": {
-          "id": "HcMp39iqfHAxWnSU",
-          "name": "Postgres account"
+        "googleDriveOAuth2Api": {
+          "id": "f0onP6oplsIDlehO",
+          "name": "Google Drive account"
         }
       }
     },
     {
       "parameters": {
-        "operation": "executeQuery",
-        "query": "=INSERT INTO chat_sessions (session_id, user_id, started_at)\nVALUES ('{{ $json.body.sessionId }}', '{{ $json.body.sender }}', NOW());\n",
-        "additionalFields": {}
+        "mode": "insert",
+        "tableName": {
+          "__rl": true,
+          "value": "documents",
+          "mode": "list",
+          "cachedResultName": "documents"
+        },
+        "options": {}
       },
-      "name": "Insert New Session",
-      "type": "n8n-nodes-base.postgres",
+      "type": "@n8n/n8n-nodes-langchain.vectorStoreSupabase",
       "typeVersion": 1,
       "position": [
-        -2060,
-        80
+        -2080,
+        1540
       ],
-      "id": "666fee6f-7b26-4690-b29d-61977c6f2672",
+      "id": "6ce5acfa-2813-4258-bc6d-d36101aa4a67",
+      "name": "Supabase Vector Store1",
+      "alwaysOutputData": false,
       "credentials": {
-        "postgres": {
-          "id": "HcMp39iqfHAxWnSU",
-          "name": "Postgres account"
+        "supabaseApi": {
+          "id": "kDUXmqQtM7DMW5gn",
+          "name": "Supabase vector storage"
         }
       }
     },
     {
       "parameters": {
-        "operation": "executeQuery",
-        "query": "=INSERT INTO chat_messages (session_id, sender, message, timestamp)\nVALUES (\n  '{{ $json.body.sessionId }}',\n  '{{ $json.body.sender }}',\n  '{{ $json.body.chatInput }}',\n  NOW()\n);",
-        "additionalFields": {}
+        "options": {}
       },
-      "name": "Insert Chat Message",
-      "type": "n8n-nodes-base.postgres",
-      "typeVersion": 1,
+      "type": "@n8n/n8n-nodes-langchain.embeddingsOpenAi",
+      "typeVersion": 1.2,
       "position": [
-        -2060,
-        260
+        -2120,
+        1760
       ],
-      "id": "9ea1d67f-eb22-494f-9e20-7b109b5338fa",
+      "id": "97c5f8b5-319f-443b-b583-8904a2847b8a",
+      "name": "Embeddings OpenAI1",
       "credentials": {
-        "postgres": {
-          "id": "HcMp39iqfHAxWnSU",
-          "name": "Postgres account"
+        "openAiApi": {
+          "id": "plLcvv2UWU9qivEj",
+          "name": "OpenAi account"
         }
       }
     },
     {
       "parameters": {
-        "rules": {
-          "values": [
+        "dataType": "binary",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.documentDefaultDataLoader",
+      "typeVersion": 1,
+      "position": [
+        -1960,
+        1760
+      ],
+      "id": "4b24b741-192e-4f54-a046-3bed75eca9a5",
+      "name": "Default Data Loader"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.textSplitterRecursiveCharacterTextSplitter",
+      "typeVersion": 1,
+      "position": [
+        -1940,
+        1940
+      ],
+      "id": "a6e95eb5-0ecb-4249-84e5-6eb4d58ad644",
+      "name": "Recursive Character Text Splitter"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -2540,
+        1540
+      ],
+      "id": "8de6f0ac-469b-4e81-98bb-e74fac501f41",
+      "name": "When clicking ‘Test workflow’"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
             {
-              "conditions": {
-                "options": {
-                  "caseSensitive": true,
-                  "leftValue": "",
-                  "typeValidation": "strict",
-                  "version": 2
-                },
-                "conditions": [
-                  {
-                    "leftValue": "={{ $item(\"0\").$node[\"Check Session\"].json }}",
-                    "rightValue": "",
-                    "operator": {
-                      "type": "object",
-                      "operation": "empty",
-                      "singleValue": true
-                    },
-                    "id": "b4987cf1-b1c7-4b3c-95ff-6ccc222dca14"
-                  }
-                ],
-                "combinator": "and"
-              },
-              "renameOutput": true,
-              "outputKey": "TRUE"
+              "id": "8933b540-7b59-4ce3-9eac-e21fb8509780",
+              "name": "type",
+              "value": "={{ $json.type }}",
+              "type": "string"
             },
             {
-              "conditions": {
-                "options": {
-                  "caseSensitive": true,
-                  "leftValue": "",
-                  "typeValidation": "strict",
-                  "version": 2
-                },
-                "conditions": [
-                  {
-                    "id": "8a5f2f86-3376-40a5-8905-51c300f23fde",
-                    "leftValue": "={{ $item(\"0\").$node[\"Check Session\"].json }}",
-                    "rightValue": "",
-                    "operator": {
-                      "type": "object",
-                      "operation": "exists",
-                      "singleValue": true
-                    }
-                  }
-                ],
-                "combinator": "and"
-              },
-              "renameOutput": true,
-              "outputKey": "FALSE"
+              "id": "00362b45-1d92-435b-a4c5-cf494a75655f",
+              "name": "response",
+              "value": "={{ $json.response }}",
+              "type": "string"
             }
           ]
         },
         "options": {}
       },
-      "type": "n8n-nodes-base.switch",
-      "typeVersion": 3.2,
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
       "position": [
-        -2400,
-        440
+        -1640,
+        840
       ],
-      "id": "787b6b3a-4f46-429a-9a17-d127ff0e7583",
-      "name": "session doesn't exist"
+      "id": "0ca2f82f-8aad-45cc-88eb-3218edd69239",
+      "name": "Edit Fields"
+    },
+    {
+      "parameters": {
+        "jsCode": "const parsed = JSON.parse($json.output);\n\nreturn [{\n  json: {\n    type: parsed.type,\n    response: parsed.data.markdown\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1900,
+        840
+      ],
+      "id": "b8f2123d-9dbe-4501-ae7e-70d3fe699576",
+      "name": "Code"
     }
   ],
   "pinData": {},
   "connections": {
-    "Simple Memory": {
-      "ai_memory": [
-        [
-          {
-            "node": "AI Agent1",
-            "type": "ai_memory",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Search FAQ": {
-      "main": [
-        [
-          {
-            "node": "Log Bot Response1",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "FAQ Found?": {
-      "main": [
-        [
-          {
-            "node": "Code1",
-            "type": "main",
-            "index": 0
-          }
-        ],
-        [
-          {
-            "node": "Get Topics",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Get Topics": {
-      "main": [
-        [
-          {
-            "node": "Format Topics as Buttons",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Format Topics as Buttons": {
-      "main": [
-        [
-          {
-            "node": "Respond to Webhook1",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
     "OpenAI Chat Model1": {
       "ai_languageModel": [
         [
@@ -443,51 +311,52 @@
       "main": [
         [
           {
-            "node": "Search FAQ",
+            "node": "Code",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Respond to Webhook": {
-      "main": [
-        []
-      ]
-    },
-    "Code1": {
+    "Webhook - Incoming Message": {
       "main": [
         [
           {
-            "node": "Respond to Webhook",
+            "node": "AI Agent1",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Respond to Webhook1": {
-      "main": [
-        []
-      ]
-    },
-    "Webhook - Chat": {
-      "main": [
+    "Postgres Chat Memory": {
+      "ai_memory": [
         [
           {
-            "node": "Check Session",
-            "type": "main",
+            "node": "AI Agent1",
+            "type": "ai_memory",
             "index": 0
           }
         ]
       ]
     },
-    "Log Bot Response1": {
-      "main": [
+    "Supabase Vector Store": {
+      "ai_tool": [
         [
           {
-            "node": "FAQ Found?",
-            "type": "main",
+            "node": "AI Agent1",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Embeddings OpenAI": {
+      "ai_embedding": [
+        [
+          {
+            "node": "Supabase Vector Store",
+            "type": "ai_embedding",
             "index": 0
           }
         ]
@@ -498,67 +367,71 @@
         []
       ]
     },
-    "Check Session": {
+    "Google Drive": {
       "main": [
         [
           {
-            "node": "session doesn't exist",
+            "node": "Supabase Vector Store1",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Insert New Session": {
+    "Embeddings OpenAI1": {
+      "ai_embedding": [
+        [
+          {
+            "node": "Supabase Vector Store1",
+            "type": "ai_embedding",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Default Data Loader": {
+      "ai_document": [
+        [
+          {
+            "node": "Supabase Vector Store1",
+            "type": "ai_document",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Recursive Character Text Splitter": {
+      "ai_textSplitter": [
+        [
+          {
+            "node": "Default Data Loader",
+            "type": "ai_textSplitter",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "When clicking ‘Test workflow’": {
       "main": [
         [
           {
-            "node": "Merge",
+            "node": "Google Drive",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Insert Chat Message": {
+    "Edit Fields": {
       "main": [
-        [
-          {
-            "node": "Merge",
-            "type": "main",
-            "index": 0
-          }
-        ]
+        []
       ]
     },
-    "session doesn't exist": {
+    "Code": {
       "main": [
         [
           {
-            "node": "Insert New Session",
-            "type": "main",
-            "index": 0
-          },
-          {
-            "node": "Insert Chat Message",
-            "type": "main",
-            "index": 0
-          }
-        ],
-        [
-          {
-            "node": "Merge",
-            "type": "main",
-            "index": 1
-          }
-        ]
-      ]
-    },
-    "Merge": {
-      "main": [
-        [
-          {
-            "node": "AI Agent1",
+            "node": "Edit Fields",
             "type": "main",
             "index": 0
           }
@@ -571,7 +444,7 @@
     "executionOrder": "v1",
     "callerPolicy": "workflowsFromSameOwner"
   },
-  "versionId": "c7630621-eed1-40ab-802f-3e0a0b4c58b4",
+  "versionId": "74c57fc2-9670-44a9-b48d-6541f3c1dfba",
   "meta": {
     "templateId": "1954",
     "templateCredsSetupCompleted": true,
