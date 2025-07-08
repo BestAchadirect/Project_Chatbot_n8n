@@ -1,6 +1,6 @@
 from flask import Flask
 from flask_cors import CORS
-from .routes import api_routes, bp as chat_bp
+from .routes import api_routes
 
 
 def create_app():
@@ -12,7 +12,6 @@ def create_app():
     CORS(app, resources={r"/*": {"origins": "*"}})  # Allow all origins for development
 
     app.register_blueprint(api_routes)
-    app.register_blueprint(chat_bp)
 
     return app
 

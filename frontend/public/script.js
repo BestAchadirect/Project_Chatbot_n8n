@@ -117,7 +117,7 @@ async function sendMessage() {
   showTypingIndicator();
 
   try {
-    const response = await fetch('http://localhost:5678/webhook-test/returning-user', {
+    const response = await fetch('http://localhost:5001/chat/message', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -127,7 +127,7 @@ async function sendMessage() {
     });
 
     if (!response.ok) throw new Error('Network response was not ok');
-    const data = await response.json(); // <-- assign to variable
+    const data = await response.json();
 
     removeTypingIndicator();
 
@@ -143,7 +143,7 @@ async function sendMessage() {
   } catch (error) {
     removeTypingIndicator();
     appendMessage('bot', 'Sorry, something went wrong.');
-    console.error('n8n error:', error);
+    console.error('Backend error:', error);
   }
 }
 

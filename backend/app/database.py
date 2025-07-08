@@ -8,15 +8,15 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # Read from .env or fallback to Docker default
-DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://postgres:postgres@localhost:5433/testdb")
+DATABASE_URL_TEST = os.getenv("DATABASE_URL", "postgresql://postgres:postgres@localhost:5433/testdb")
 
 # Show which database you're connecting to
-print(f"[INFO] Connecting to database: {DATABASE_URL}")
+print(f"[INFO] Connecting to database: {DATABASE_URL_TEST}")
 
 # Initialize SQLAlchemy
 Base = declarative_base()
 try:
-    engine = create_engine(DATABASE_URL, echo=False, future=True)
+    engine = create_engine(DATABASE_URL_TEST, echo=False, future=True)
     SessionLocal = sessionmaker(bind=engine, autocommit=False, autoflush=False)
 
     # Optional: test the connection
