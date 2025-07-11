@@ -1,7 +1,6 @@
 import sys
 import os
-from app.database import engine, Base
-from app import create_app
+from app import create_app, socketio
 from flask_cors import CORS
 
 
@@ -16,4 +15,4 @@ app = create_app()
 # Base.metadata.create_all(bind=engine)
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5001, debug=True)
+    socketio.run(app, host="0.0.0.0", port=5001, debug=True, allow_unsafe_werkzeug=True)
