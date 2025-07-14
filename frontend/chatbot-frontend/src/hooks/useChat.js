@@ -24,7 +24,7 @@ export default function useChat() {
 
     socket.on('new_message', (data) => {
       if (data.sender === 'bot') {
-        setMessages(prev => [...prev, { sender: 'bot', text: data.message }]);
+        setMessages(prev => [...prev, { sender: 'bot', text: data.message, timestamp: Date.now() }]);
       }
     });
 
@@ -41,7 +41,7 @@ export default function useChat() {
     const res = await fetch(`http://localhost:5001/chat/messages/${sessionId.current}`);
     const data = await res.json();
     if (data.messages) {
-      setMessages(data.messages.map(msg => ({ sender: msg.sender, text: msg.message })));
+      setMessages(data.messages.map(msg => ({ sender: msg.sender, text: msg.message, timestamp: msg.timestamp || Date.now() })));
     }
   }
 
@@ -49,7 +49,7 @@ export default function useChat() {
     if (!message.trim()) return;
 
     const msg = { sender: 'user', text: message };
-    setMessages(prev => [...prev, msg]);
+    setMessages(prev => [...prev, { ...msg, timestamp: Date.now() }]);
 
     socketRef.current?.emit('send_message', {
       sessionId: sessionId.current,
@@ -58,7 +58,7 @@ export default function useChat() {
     });
 
     // Show typing + fetch response
-    setMessages(prev => [...prev, { sender: 'system', text: '...' }]);
+    setMessages(prev => [...prev, { sender: 'system', text: 'Thinking...', timestamp: Date.now() }]);
     fetch('http://localhost:5001/chat/message', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -66,10 +66,10 @@ export default function useChat() {
     })
       .then(res => res.json())
       .then(data => {
-        setMessages(prev => [...prev.slice(0, -1), { sender: 'bot', text: data?.response || data[0]?.output || 'No response.' }]);
+        setMessages(prev => [...prev.slice(0, -1), { sender: 'bot', text: data?.response || data[0]?.output || 'Sorry, I am having trouble processing your request. Please try again.', timestamp: Date.now() }]);
       })
       .catch(err => {
-        setMessages(prev => [...prev.slice(0, -1), { sender: 'bot', text: 'Error occurred.' }]);
+        setMessages(prev => [...prev.slice(0, -1), { sender: 'bot', text: 'Error occurred.', timestamp: Date.now() }]);
         console.error(err);
       });
   }
