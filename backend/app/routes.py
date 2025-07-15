@@ -52,16 +52,25 @@ def chat_message():
         )
         n8n_response.raise_for_status()
         response_json = n8n_response.json()
+
+        # Extract bot message from possible locations
+        bot_message = None
+        if isinstance(response_json, dict):
+            # Check top-level 'response' or 'markdown'
+            bot_message = response_json.get("response") or response_json.get("markdown")
+            # Check nested 'data.response'
+            if not bot_message and isinstance(response_json.get("data"), dict):
+                bot_message = response_json["data"].get("response")
         
-        # Save bot response to database
-        if "response" in response_json and isinstance(response_json["response"], str):
+        # Save bot response to database if found
+        if bot_message and isinstance(bot_message, str):
             supabase.table('chat_messages').insert({
                 'session_id': session_id,
                 'sender': 'bot',
-                'message': response_json["response"],
+                'message': bot_message,
                 'timestamp': datetime.now(timezone.utc).isoformat()
             }).execute()
-            response_json["response"] = response_json["response"].replace('\n', ' ')
+            response_json["response"] = bot_message.replace('\n', ' ')
         
         return jsonify(response_json)
     except Exception as e:
