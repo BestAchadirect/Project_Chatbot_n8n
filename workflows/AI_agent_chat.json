@@ -3,14 +3,15 @@
   "nodes": [
     {
       "parameters": {
+        "model": "gpt-4o",
         "options": {}
       },
       "id": "7f46f62e-12d6-40b5-91b2-d849c00320fe",
       "name": "OpenAI Chat Model1",
       "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
       "position": [
-        -2440,
-        1100
+        -2520,
+        1120
       ],
       "typeVersion": 1,
       "credentials": {
@@ -25,7 +26,7 @@
         "promptType": "define",
         "text": "={{ $json.body.message }}",
         "options": {
-          "systemMessage": "You are a helpful assistant for Achadirect. Answer the user's question \nclearly and politely. Only use the information in the provided content\nin the database.\n\nIf you cannot answer based on the content, say: \"I'm sorry, I couldn't find that information in our database.\"\n\nreturn a JSON object describing the type of the response.\nRespond in the following format:\n\n{\n  \"type\": \"<type>\",\n  \"data\": {\n    \"markdown\": \"<original_answer_here>\"\n  }\n}\n\nDo not invent content. Simply classify and wrap the response.\n"
+          "systemMessage": "You are a helpful assistant for Achadirect. Answer the user's question clearly and politely using only the information provided in the database."
         }
       },
       "id": "d6a3ce04-11d1-442e-af15-351652e57561",
@@ -53,7 +54,7 @@
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 1,
       "position": [
-        -2580,
+        -2600,
         840
       ],
       "webhookId": "5efe0794-798c-47b1-b22d-8510a26048c2"
@@ -66,8 +67,8 @@
       "type": "@n8n/n8n-nodes-langchain.memoryPostgresChat",
       "typeVersion": 1.3,
       "position": [
-        -2260,
-        1100
+        -2340,
+        1120
       ],
       "id": "74f226fa-e5f2-405c-9f8a-1d5616ab3761",
       "name": "Postgres Chat Memory",
@@ -80,42 +81,13 @@
     },
     {
       "parameters": {
-        "mode": "retrieve-as-tool",
-        "toolName": "company_faq",
-        "toolDescription": "Work with the data in Supabase vector store",
-        "tableName": {
-          "__rl": true,
-          "value": "documents",
-          "mode": "list",
-          "cachedResultName": "documents"
-        },
-        "topK": 20,
-        "options": {}
-      },
-      "type": "@n8n/n8n-nodes-langchain.vectorStoreSupabase",
-      "typeVersion": 1,
-      "position": [
-        -2120,
-        1120
-      ],
-      "id": "f2cdd9fb-c83b-45ff-b021-bdeb6949faad",
-      "name": "Supabase Vector Store",
-      "credentials": {
-        "supabaseApi": {
-          "id": "kDUXmqQtM7DMW5gn",
-          "name": "Supabase vector storage"
-        }
-      }
-    },
-    {
-      "parameters": {
         "options": {}
       },
       "type": "@n8n/n8n-nodes-langchain.embeddingsOpenAi",
       "typeVersion": 1.2,
       "position": [
-        -2080,
-        1300
+        -2200,
+        1380
       ],
       "id": "3936b544-2a3a-4861-9993-a9545d72c775",
       "name": "Embeddings OpenAI",
@@ -125,20 +97,6 @@
           "name": "OpenAi account"
         }
       }
-    },
-    {
-      "parameters": {
-        "options": {}
-      },
-      "type": "@n8n/n8n-nodes-langchain.chatTrigger",
-      "typeVersion": 1.1,
-      "position": [
-        -2860,
-        840
-      ],
-      "id": "97269d78-0b4d-40de-8530-7d67c74ea2b5",
-      "name": "When chat message received",
-      "webhookId": "fabe1c8b-d765-41d7-a1e3-81168dcf46c9"
     },
     {
       "parameters": {
@@ -155,8 +113,8 @@
       "type": "n8n-nodes-base.googleDrive",
       "typeVersion": 3,
       "position": [
-        -2300,
-        1540
+        -3520,
+        840
       ],
       "id": "ccc63d99-7ad8-4edf-b260-9c657a910c67",
       "name": "Google Drive",
@@ -181,8 +139,8 @@
       "type": "@n8n/n8n-nodes-langchain.vectorStoreSupabase",
       "typeVersion": 1,
       "position": [
-        -2080,
-        1540
+        -3300,
+        840
       ],
       "id": "6ce5acfa-2813-4258-bc6d-d36101aa4a67",
       "name": "Supabase Vector Store1",
@@ -201,8 +159,8 @@
       "type": "@n8n/n8n-nodes-langchain.embeddingsOpenAi",
       "typeVersion": 1.2,
       "position": [
-        -2120,
-        1760
+        -3340,
+        1060
       ],
       "id": "97c5f8b5-319f-443b-b583-8904a2847b8a",
       "name": "Embeddings OpenAI1",
@@ -221,8 +179,8 @@
       "type": "@n8n/n8n-nodes-langchain.documentDefaultDataLoader",
       "typeVersion": 1,
       "position": [
-        -1960,
-        1760
+        -3180,
+        1060
       ],
       "id": "4b24b741-192e-4f54-a046-3bed75eca9a5",
       "name": "Default Data Loader"
@@ -234,8 +192,8 @@
       "type": "@n8n/n8n-nodes-langchain.textSplitterRecursiveCharacterTextSplitter",
       "typeVersion": 1,
       "position": [
-        -1940,
-        1940
+        -3160,
+        1240
       ],
       "id": "a6e95eb5-0ecb-4249-84e5-6eb4d58ad644",
       "name": "Recursive Character Text Splitter"
@@ -245,53 +203,55 @@
       "type": "n8n-nodes-base.manualTrigger",
       "typeVersion": 1,
       "position": [
-        -2540,
-        1540
+        -3760,
+        840
       ],
       "id": "8de6f0ac-469b-4e81-98bb-e74fac501f41",
       "name": "When clicking ‘Test workflow’"
     },
     {
       "parameters": {
-        "assignments": {
-          "assignments": [
-            {
-              "id": "8933b540-7b59-4ce3-9eac-e21fb8509780",
-              "name": "type",
-              "value": "={{ $json.type }}",
-              "type": "string"
-            },
-            {
-              "id": "00362b45-1d92-435b-a4c5-cf494a75655f",
-              "name": "response",
-              "value": "={{ $json.response }}",
-              "type": "string"
-            }
-          ]
+        "mode": "retrieve-as-tool",
+        "toolName": "company_knowledge",
+        "toolDescription": "Enables the AI Agent to retrieve relevant knowledge from the Supabase vector store using semantic search. Used to answer user queries based on embedded company documents.",
+        "tableName": {
+          "__rl": true,
+          "value": "documents",
+          "mode": "list",
+          "cachedResultName": "documents"
         },
+        "topK": 28,
+        "includeDocumentMetadata": false,
         "options": {}
       },
-      "type": "n8n-nodes-base.set",
-      "typeVersion": 3.4,
+      "type": "@n8n/n8n-nodes-langchain.vectorStoreSupabase",
+      "typeVersion": 1,
       "position": [
-        -1640,
-        840
+        -2160,
+        1200
       ],
-      "id": "0ca2f82f-8aad-45cc-88eb-3218edd69239",
-      "name": "Edit Fields"
+      "id": "f2cdd9fb-c83b-45ff-b021-bdeb6949faad",
+      "name": "Supabase Vector Store",
+      "credentials": {
+        "supabaseApi": {
+          "id": "kDUXmqQtM7DMW5gn",
+          "name": "Supabase vector storage"
+        }
+      }
     },
     {
       "parameters": {
-        "jsCode": "const parsed = JSON.parse($json.output);\n\nreturn [{\n  json: {\n    type: parsed.type,\n    response: parsed.data.markdown\n  }\n}];"
+        "jsCode": "const raw = $json.output;\n\nreturn [{\n  json: {\n    type: \"answer\",\n    data: {\n      response: raw\n    }\n  }\n}];"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        -1900,
+        -1880,
         840
       ],
       "id": "b8f2123d-9dbe-4501-ae7e-70d3fe699576",
-      "name": "Code"
+      "name": "Output Parser",
+      "alwaysOutputData": true
     }
   ],
   "pinData": {},
@@ -311,7 +271,7 @@
       "main": [
         [
           {
-            "node": "Code",
+            "node": "Output Parser",
             "type": "main",
             "index": 0
           }
@@ -340,17 +300,6 @@
         ]
       ]
     },
-    "Supabase Vector Store": {
-      "ai_tool": [
-        [
-          {
-            "node": "AI Agent1",
-            "type": "ai_tool",
-            "index": 0
-          }
-        ]
-      ]
-    },
     "Embeddings OpenAI": {
       "ai_embedding": [
         [
@@ -360,11 +309,6 @@
             "index": 0
           }
         ]
-      ]
-    },
-    "When chat message received": {
-      "main": [
-        []
       ]
     },
     "Google Drive": {
@@ -422,20 +366,20 @@
         ]
       ]
     },
-    "Edit Fields": {
-      "main": [
-        []
-      ]
-    },
-    "Code": {
-      "main": [
+    "Supabase Vector Store": {
+      "ai_tool": [
         [
           {
-            "node": "Edit Fields",
-            "type": "main",
+            "node": "AI Agent1",
+            "type": "ai_tool",
             "index": 0
           }
         ]
+      ]
+    },
+    "Output Parser": {
+      "main": [
+        []
       ]
     }
   },
@@ -444,7 +388,7 @@
     "executionOrder": "v1",
     "callerPolicy": "workflowsFromSameOwner"
   },
-  "versionId": "74c57fc2-9670-44a9-b48d-6541f3c1dfba",
+  "versionId": "4dfac529-0ae7-4946-9cb1-df3d5c27f492",
   "meta": {
     "templateId": "1954",
     "templateCredsSetupCompleted": true,
