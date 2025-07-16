@@ -68,6 +68,11 @@ export default function MessageBubble({ message, sender, text, timestamp }) {
     timeString = new Date().toLocaleTimeString();
   }
 
+  // Preprocess: Replace ' - ' (space-dash-space) with '\n- ' to start a new bullet point
+  let formattedMessage = response.replace(/ - /g, "\n- ");
+  // Replace \n with Markdown line breaks for other newlines
+  formattedMessage = formattedMessage.replace(/\n/g, "  \n");
+
   return (
     <div className={`chat-message flex ${isUser ? 'justify-end' : isBot ? 'justify-start' : 'justify-center'} mb-2`}>
       <div className={bubbleClass}>
@@ -103,7 +108,7 @@ export default function MessageBubble({ message, sender, text, timestamp }) {
             </table>
           ) : (
             <ReactMarkdown
-              children={response}
+              children={formattedMessage}
               components={{
                 img: ({ node, ...props }) => (
                   <img {...props} style={{ maxWidth: '80%', borderRadius: '10px' }} />

@@ -48,7 +48,7 @@ def chat_message():
         n8n_response = requests.post(
             "http://localhost:5678/webhook-test/returning-user",
             json=data,
-            timeout=10
+            timeout=30
         )
         n8n_response.raise_for_status()
         response_json = n8n_response.json()
