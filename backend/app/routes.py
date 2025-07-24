@@ -1,130 +1,88 @@
-from flask import Blueprint, request, jsonify, session
-from flask_socketio import emit, join_room, leave_room
-import requests
-from datetime import datetime, timezone
-import uuid
-from supabase import create_client, Client
+
+"""
+API routes module for chat application.
+Defines all HTTP endpoints and WebSocket handlers.
+"""
+
 import os
-from dotenv import load_dotenv
+from fastapi import APIRouter, HTTPException
+from fastapi.responses import JSONResponse
+from typing import Optional, List, Dict, Any
+from datetime import datetime, timezone
 
-load_dotenv()
+from fastapi import Depends
+from .models.chat import ChatMessageRequest, ChatMessage, ChatSession
+from .services.database import DatabaseService, db_service
+from .services.n8n import N8NService, n8n_service
 
-api_routes = Blueprint('api_routes', __name__)
+# Initialize router
+router = APIRouter()
 
-# Initialize Supabase client
-SUPABASE_URL = os.getenv('SUPABASE_URL')
-SUPABASE_KEY = os.getenv('SUPABASE_KEY')
-supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
+def get_db_service():
+    return db_service
 
-@api_routes.route('/chat/message', methods=['POST'])
-def chat_message():
-    data = request.get_json()
-    session_id = data.get('sessionId')
-    message = data.get('message')
-    
+def get_n8n_service():
+    return n8n_service
+
+# Get webhook URL based on environment mode
+N8N_WEBHOOK_MODE = os.getenv("N8N_WEBHOOK_MODE", "production")
+N8N_WEBHOOK_URL = (
+    "http://n8n:5678/webhook-test/returning-user" if N8N_WEBHOOK_MODE == "test"
+    else "http://n8n:5678/webhook/returning-user"
+)
+
+# API Endpoints start here
+
+# --- API Endpoints ---
+@router.post('/chat/message')
+async def chat_message(data: ChatMessageRequest):
+    """
+    Handle incoming chat messages and process responses.
+    """
+    session_id = data.sessionId
+    message = data.message
     if not session_id or not message:
-        return jsonify({"error": "Missing sessionId or message"}), 400
-    
-    # Create or get chat session
-    session_resp = supabase.table('chat_sessions').select('*').eq('session_id', session_id).execute()
-    if not session_resp.data:
-        supabase.table('chat_sessions').insert({
-            'session_id': session_id,
-            'user_id': f"user_{session_id[:8]}",
-            'started_at': datetime.now(timezone.utc).isoformat(),
-            'ended_at': None
-        }).execute()
-    
-    # Save user message
-    supabase.table('chat_messages').insert({
-        'session_id': session_id,
-        'sender': 'user',
-        'message': message,
-        'timestamp': datetime.now(timezone.utc).isoformat()
-    }).execute()
-    
-    # Forward the message to n8n and return n8n's response to the frontend
-    try:
-        n8n_response = requests.post(
-            "http://localhost:5678/webhook-test/returning-user",
-            json=data,
-            timeout=30
-        )
-        n8n_response.raise_for_status()
-        response_json = n8n_response.json()
+        raise HTTPException(status_code=400, detail="Missing sessionId or message")
 
-        # Extract bot message from possible locations
-        bot_message = None
-        if isinstance(response_json, dict):
-            # Check top-level 'response' or 'markdown'
-            bot_message = response_json.get("response") or response_json.get("markdown")
-            # Check nested 'data.response'
-            if not bot_message and isinstance(response_json.get("data"), dict):
-                bot_message = response_json["data"].get("response")
+    try:
+        # Ensure session exists and save user message
+        await db_service.get_or_create_session(session_id)
+        await db_service.save_message(session_id, 'user', message)
+
+        # Forward message to n8n and handle response
+        response_json = await n8n_service.send_message(session_id, message)
+        bot_message = n8n_service.extract_bot_message(response_json)
         
-        # Save bot response to database if found
         if bot_message and isinstance(bot_message, str):
-            supabase.table('chat_messages').insert({
-                'session_id': session_id,
-                'sender': 'bot',
-                'message': bot_message,
-                'timestamp': datetime.now(timezone.utc).isoformat()
-            }).execute()
+            await db_service.save_message(session_id, 'bot', bot_message)
             response_json["response"] = bot_message.replace('\n', ' ')
         
-        return jsonify(response_json)
+        return JSONResponse(content=response_json)
     except Exception as e:
         print(f"Error contacting n8n: {e}")
-        # Save error bot message to database
-        supabase.table('chat_messages').insert({
-            'session_id': session_id,
-            'sender': 'bot',
-            'message': 'Sorry, something went wrong.',
-            'timestamp': datetime.now(timezone.utc).isoformat()
-        }).execute()
-        return jsonify({"error": "Sorry, something went wrong."}), 500
+        await db_service.save_message(session_id, 'bot', 'Sorry, something went wrong.')
+        raise HTTPException(status_code=500, detail="Sorry, something went wrong.")
 
-@api_routes.route('/chat/sessions', methods=['GET'])
-def get_chat_sessions():
-    user_id = request.args.get('user_id')
+@router.get('/chat/sessions')
+async def get_chat_sessions(user_id: Optional[str] = None):
     if not user_id:
-        return jsonify({"error": "Missing user_id parameter"}), 400
-    
-    resp = supabase.table('chat_sessions').select('*').eq('user_id', user_id).order('started_at', desc=True).execute()
-    sessions = resp.data or []
-    return jsonify({
-        "sessions": [
-            {
-                "session_id": s['session_id'],
-                "started_at": s['started_at'],
-                "ended_at": s.get('ended_at')
-            } for s in sessions
-        ]
-    })
+        raise HTTPException(status_code=400, detail="Missing user_id parameter")
+    sessions = await db_service.get_user_sessions(user_id)
+    return {"sessions": sessions}
 
-@api_routes.route('/chat/messages/<session_id>', methods=['GET'])
-def get_chat_messages(session_id):
-    resp = supabase.table('chat_messages').select('*').eq('session_id', session_id).order('timestamp').execute()
-    messages = resp.data or []
-    return jsonify({
-        "messages": [
-            {
-                "message_id": m.get('message_id', ''),
-                "sender": m['sender'],
-                "message": m['message'],
-                "timestamp": m['timestamp']
-            } for m in messages
-        ]
-    })
+@router.get('/chat/messages/{session_id}')
+async def get_chat_messages(session_id: str):
+    messages = await db_service.get_chat_messages(session_id)
+    return {"messages": messages}
 
-@api_routes.route('/chat/session/<session_id>/end', methods=['POST'])
-def end_chat_session(session_id):
-    resp = supabase.table('chat_sessions').update({'ended_at': datetime.now(timezone.utc).isoformat()}).eq('session_id', session_id).execute()
-    if resp.data:
-        return jsonify({"message": "Session ended successfully"})
+@router.post('/chat/session/{session_id}/end')
+async def end_chat_session(session_id: str):
+    success = await db_service.end_session(session_id)
+    if success:
+        return {"message": "Session ended successfully"}
     else:
-        return jsonify({"error": "Session not found"}), 404
+        raise HTTPException(status_code=404, detail="Session not found")
 
-@api_routes.route('/health', methods=['GET'])
-def health_check():
-    return jsonify({"status": "healthy", "timestamp": datetime.now(timezone.utc).isoformat()})
+@router.get('/health')
+async def health_check():
+    return {"status": "healthy", "timestamp": datetime.now(timezone.utc).isoformat()}

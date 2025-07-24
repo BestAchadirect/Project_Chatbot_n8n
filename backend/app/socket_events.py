@@ -1,88 +1,115 @@
-from flask_socketio import emit, join_room, leave_room, disconnect
-from flask import request
-from . import socketio
+"""
+WebSocket events module for chat application.
+Handles real-time communication features like typing indicators and live updates.
+"""
+
+from fastapi import WebSocket, WebSocketDisconnect
+from typing import Dict, Set
 from datetime import datetime
-from dotenv import load_dotenv
-from datetime import datetime, timezone
-import os
-from supabase import create_client, Client
 
-load_dotenv()
-
-# Initialize Supabase client
-SUPABASE_URL = os.getenv('SUPABASE_URL')
-SUPABASE_KEY = os.getenv('SUPABASE_KEY')
-supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
-
-@socketio.on('connect')
-def handle_connect():
-    print(f"Client connected: {request.sid}")
-    emit('connected', {'data': 'Connected to chat server'})
-
-@socketio.on('disconnect')
-def handle_disconnect():
-    print(f"Client disconnected: {request.sid}")
-
-@socketio.on('join_room')
-def handle_join_room(data):
-    room = data.get('room')
-    if room:
-        join_room(room)
-        emit('status', {'msg': f'Joined room: {room}'}, room=room)
-
-@socketio.on('leave_room')
-def handle_leave_room(data):
-    room = data.get('room')
-    if room:
-        leave_room(room)
-        emit('status', {'msg': f'Left room: {room}'}, room=room)
-
-@socketio.on('send_message')
-def handle_send_message(data):
-    session_id = data.get('sessionId')
-    message = data.get('message')
-    sender = data.get('sender', 'user')
+class ConnectionManager:
+    """
+    Manages WebSocket connections and broadcasts.
+    Handles connection lifecycle and message distribution.
+    """
     
-    if not session_id or not message:
-        emit('error', {'error': 'Missing sessionId or message'})
-        return
+    def __init__(self):
+        """Initialize connection manager with empty connection pools."""
+        self.active_connections: Dict[str, Set[WebSocket]] = {}
+
+    async def connect(self, websocket: WebSocket, session_id: str):
+        """
+        Accept a new WebSocket connection.
+        
+        Args:
+            websocket (WebSocket): The WebSocket connection
+            session_id (str): Chat session identifier
+        """
+        await websocket.accept()
+        if session_id not in self.active_connections:
+            self.active_connections[session_id] = set()
+        self.active_connections[session_id].add(websocket)
+
+    def disconnect(self, websocket: WebSocket, session_id: str):
+        """
+        Remove a WebSocket connection.
+        
+        Args:
+            websocket (WebSocket): The WebSocket connection
+            session_id (str): Chat session identifier
+        """
+        if session_id in self.active_connections:
+            self.active_connections[session_id].remove(websocket)
+            if not self.active_connections[session_id]:
+                del self.active_connections[session_id]
+
+    async def broadcast_to_session(self, message: dict, session_id: str):
+        """
+        Broadcast message to all connections in a session.
+        
+        Args:
+            message (dict): Message to broadcast
+            session_id (str): Target session identifier
+        """
+        if session_id in self.active_connections:
+            for connection in self.active_connections[session_id]:
+                await connection.send_json(message)
+
+# Initialize connection manager
+manager = ConnectionManager()
+
+async def websocket_endpoint(websocket: WebSocket):
+    """
+    Handle WebSocket connections and messages.
+    Currently used for typing indicators and connection status.
+    
+    Args:
+        websocket (WebSocket): The WebSocket connection
+    """
+    session_id = None
     
     try:
-        # Create or get chat session
-        session_resp = supabase.table('chat_sessions').select('*').eq('session_id', session_id).execute()
-        if not session_resp.data:
-            supabase.table('chat_sessions').insert({
-                'session_id': session_id,
-                'user_id': f"user_{session_id[:8]}",
-                'started_at': datetime.now(timezone.utc).isoformat()
-            }).execute()
+        # Accept initial connection
+        await websocket.accept()
         
-        # Do NOT save the message here, just broadcast it
-        emit('new_message', {
-            'sessionId': session_id,
-            'sender': sender,
-            'message': message,
-            'timestamp': datetime.now(timezone.utc).isoformat()
-        }, room=session_id)
+        # Get session information
+        data = await websocket.receive_json()
+        session_id = data.get('sessionId')
         
+        if not session_id:
+            await websocket.close(code=1003)  # 1003 = Unsupported data
+            return
+            
+        # Register connection
+        await manager.connect(websocket, session_id)
+        
+        # Notify session of connection
+        await manager.broadcast_to_session({
+            'type': 'connection',
+            'status': 'connected',
+            'timestamp': datetime.now().isoformat()
+        }, session_id)
+        
+        # Main message loop
+        while True:
+            data = await websocket.receive_json()
+            if data.get('type') == 'typing':
+                # Broadcast typing status
+                await manager.broadcast_to_session({
+                    'type': 'typing',
+                    'sender': data.get('sender'),
+                    'timestamp': datetime.now().isoformat()
+                }, session_id)
+                
+    except WebSocketDisconnect:
+        if session_id:
+            manager.disconnect(websocket, session_id)
+            await manager.broadcast_to_session({
+                'type': 'connection',
+                'status': 'disconnected',
+                'timestamp': datetime.now().isoformat()
+            }, session_id)
     except Exception as e:
-        print(f"Error saving message: {e}")
-        emit('error', {'error': 'Failed to save message'})
-
-@socketio.on('typing')
-def handle_typing(data):
-    session_id = data.get('sessionId')
-    is_typing = data.get('isTyping', False)
-    
-    if session_id:
-        emit('user_typing', {
-            'sessionId': session_id,
-            'isTyping': is_typing
-        }, room=session_id, include_self=False)
-
-@socketio.on('join_session')
-def handle_join_session(data):
-    session_id = data.get('sessionId')
-    if session_id:
-        join_room(session_id)
-        emit('status', {'msg': f'Joined session: {session_id}'}, room=session_id) 
+        print(f"WebSocket error: {e}")
+        if session_id:
+            manager.disconnect(websocket, session_id)
