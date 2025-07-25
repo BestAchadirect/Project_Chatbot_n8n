@@ -9,32 +9,34 @@
 import { useState, useEffect, useRef } from 'react';
 import { config } from '../utils/config';
 import { createRequestHeaders } from '../utils/security';
-import { getOrCreateSessionId } from '../utils/session';
+import { getOrCreateSessionId, getOrCreateUserId } from '../utils/session';
 import { parseWebSocketMessage, formatBotResponse } from '../utils/messageHandling';
 
 /**
  * Custom hook for chat functionality
  * @returns {Object} Chat interface methods and state
  * @property {Array} messages - Array of chat messages
+ * @property {Array} sessions - Array of chat sessions
  * @property {Function} sendMessage - Function to send a new message
  * @property {Function} handleTyping - Function to handle typing events
  * @property {boolean} connected - WebSocket connection status
  */
 export default function useChat() {
-  // State for storing chat messages and connection status
+  // State for storing chat messages, sessions and connection status
   const [messages, setMessages] = useState([]);
+  const [sessions, setSessions] = useState([]);
   const [connected, setConnected] = useState(false);
   
   // Refs for persistent values across renders
   const wsRef = useRef(null);  // WebSocket reference
-  const sessionId = useRef(getOrCreateSessionId());  // Unique session identifier
+  const userId = useRef(getOrCreateUserId());  // Persistent user identifier
+  const sessionId = useRef(getOrCreateSessionId());  // Session-based chat ID
 
   /**
-   * Effect hook to load chat history when component mounts
-   * Retrieves previous messages from the backend server
+   * Effect hook to load chat sessions and history when component mounts
    */
   useEffect(() => {
-    loadChatHistory();
+    loadChatSessions();
   }, []);
 
   /**
@@ -109,9 +111,32 @@ export default function useChat() {
    * Loads previous chat messages from the backend API
    * Retrieves and formats the chat history for the current session
    */
-  async function loadChatHistory() {
+  /**
+   * Load available chat sessions for the current user
+   */
+  async function loadChatSessions() {
     try {
-      const res = await fetch(`${config.API_BASE}/chat/messages/${sessionId.current}`);
+      const res = await fetch(`${config.API_BASE}/chat/sessions?user_id=${userId.current}`);
+      const data = await res.json();
+      if (data.sessions) {
+        setSessions(data.sessions);
+        // Load messages for current session if it exists
+        if (sessionId.current) {
+          loadChatHistory(sessionId.current);
+        }
+      }
+    } catch (err) {
+      console.error('Failed to load chat sessions:', err);
+    }
+  }
+
+  /**
+   * Load chat history for a specific session
+   */
+  async function loadChatHistory(targetSessionId = null) {
+    try {
+      const sid = targetSessionId || sessionId.current;
+      const res = await fetch(`${config.API_BASE}/chat/messages/${sid}`);
       const data = await res.json();
       if (data.messages) {
         setMessages(data.messages.map(msg => ({ 

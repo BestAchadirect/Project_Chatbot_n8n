@@ -13,12 +13,22 @@
  * - Prevents connections to unauthorized backends
  */
 export function validateHost(host) {
-  const allowedOrigins = JSON.parse(process.env.REACT_APP_ALLOWED_ORIGINS || '["localhost"]');
-  if (!host || !allowedOrigins.includes(host)) {
-    console.error('Invalid backend host configuration');
-    return 'localhost'; // Fallback to safe default
+  try {
+    const allowedOrigins = JSON.parse(process.env.REACT_APP_ALLOWED_ORIGINS || '["localhost"]');
+    if (!host) {
+      console.warn('No host provided, falling back to localhost');
+      return 'localhost';
+    }
+    // Handle IP addresses and hostnames
+    if (allowedOrigins.includes(host)) {
+      return host;
+    }
+    console.warn(`Host ${host} not in allowed origins, falling back to first allowed origin`);
+    return allowedOrigins[0];
+  } catch (error) {
+    console.error('Error parsing allowed origins:', error);
+    return 'localhost';
   }
-  return host;
 }
 
 /**
@@ -39,6 +49,15 @@ export function getSecurityHeaders(enableSecurityHeaders) {
     : {};
 }
 
+// Generate a UUID v4 (RFC4122) using more widely supported methods
+function generateUUID() {
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+    const r = (Math.random() * 16) | 0;
+    const v = c === 'x' ? r : (r & 0x3) | 0x8;
+    return v.toString(16);
+  });
+}
+
 /**
  * Creates complete set of headers for API requests
  * @param {boolean} enableSecurityHeaders - Flag to enable additional security headers
@@ -53,7 +72,7 @@ export function getSecurityHeaders(enableSecurityHeaders) {
 export function createRequestHeaders(enableSecurityHeaders = false) {
   return {
     'Content-Type': 'application/json',
-    'X-Request-ID': crypto.randomUUID(), // Unique identifier for request tracing
+    'X-Request-ID': generateUUID(), // Unique identifier for request tracing
     ...getSecurityHeaders(enableSecurityHeaders)
   };
 }

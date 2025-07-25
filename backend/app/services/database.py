@@ -25,6 +25,25 @@ class DatabaseService:
         """
         self.client: Client = create_client(url, key)
 
+    def get_user_sessions(self, user_id: str) -> List[ChatSession]:
+        """
+        Get all chat sessions for a given user.
+
+        Args:
+            user_id (str): The user's identifier
+
+        Returns:
+            List[ChatSession]: List of chat sessions
+        """
+        try:
+            resp = self.client.table('chat_sessions').select('*').eq('user_id', user_id).order('started_at').execute()
+            return [ChatSession(**session) for session in (resp.data or [])]
+        except Exception as e:
+            print(f"Error getting user sessions: {str(e)}")
+            import traceback
+            print(f"Error traceback: {traceback.format_exc()}")
+            raise
+
     def get_or_create_session(self, session_id: str) -> None:
         """
         Retrieve existing session or create new one.
@@ -73,8 +92,17 @@ class DatabaseService:
         Returns:
             List[ChatMessage]: List of chat messages
         """
-        resp = self.client.table('chat_messages').select('*').eq('session_id', session_id).order('timestamp').execute()
-        return [ChatMessage(**msg) for msg in (resp.data or [])]
+        try:
+            print(f"Querying Supabase for messages with session_id: {session_id}")
+            resp = self.client.table('chat_messages').select('*').eq('session_id', session_id).order('timestamp').execute()
+            print(f"Supabase response: {resp}")
+            print(f"Response data: {resp.data}")
+            return [ChatMessage(**msg) for msg in (resp.data or [])]
+        except Exception as e:
+            print(f"Database error: {str(e)}")
+            import traceback
+            print(f"Database error traceback: {traceback.format_exc()}")
+            raise
 
     def end_session(self, session_id: str) -> bool:
         """
@@ -89,6 +117,7 @@ class DatabaseService:
         resp = self.client.table('chat_sessions').update({
             'ended_at': datetime.now(timezone.utc).isoformat()
         }).eq('session_id', session_id).execute()
+        return bool(resp.data)
         return bool(resp.data)
 
 # Initialize database service with environment variables

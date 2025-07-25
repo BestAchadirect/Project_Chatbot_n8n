@@ -1,7 +1,19 @@
 
 """
 API routes module for chat application.
-Defines all HTTP endpoints and WebSocket handlers.
+Defines all HTTP @router.get('/chat/sessions')
+async def get_chat_sessions(user_id: Optional[str] = None):
+    if not user_id:
+        raise HTTPException(status_code=400, detail="Missing user_id parameter")
+    try:
+        sessions = db_service.get_user_sessions(user_id)
+        print(f"Retrieved {len(sessions) if sessions else 0} sessions for user {user_id}")
+        return {"sessions": [session.dict() for session in sessions]}
+    except Exception as e:
+        print(f"Error getting sessions: {str(e)}")
+        import traceback
+        print(f"Error traceback: {traceback.format_exc()}")
+        raise HTTPException(status_code=500, detail=f"Error getting sessions: {str(e)}")nts and WebSocket handlers.
 """
 
 import os
@@ -46,15 +58,15 @@ async def chat_message(data: ChatMessageRequest):
 
     try:
         # Ensure session exists and save user message
-        await db_service.get_or_create_session(session_id)
-        await db_service.save_message(session_id, 'user', message)
+        db_service.get_or_create_session(session_id)
+        db_service.save_message(session_id, 'user', message)
 
         # Forward message to n8n and handle response
         response_json = await n8n_service.send_message(session_id, message)
         bot_message = n8n_service.extract_bot_message(response_json)
         
         if bot_message and isinstance(bot_message, str):
-            await db_service.save_message(session_id, 'bot', bot_message)
+            db_service.save_message(session_id, 'bot', bot_message)
             response_json["response"] = bot_message.replace('\n', ' ')
         
         return JSONResponse(content=response_json)
@@ -67,17 +79,27 @@ async def chat_message(data: ChatMessageRequest):
 async def get_chat_sessions(user_id: Optional[str] = None):
     if not user_id:
         raise HTTPException(status_code=400, detail="Missing user_id parameter")
-    sessions = await db_service.get_user_sessions(user_id)
+    sessions = db_service.get_user_sessions(user_id)
     return {"sessions": sessions}
 
 @router.get('/chat/messages/{session_id}')
 async def get_chat_messages(session_id: str):
-    messages = await db_service.get_chat_messages(session_id)
-    return {"messages": messages}
+    print(f"Received request for messages with session_id: {session_id}")
+    try:
+        print("Attempting to fetch messages from database...")
+        messages = db_service.get_session_messages(session_id)
+        print(f"Successfully retrieved {len(messages)} messages")
+        return {"messages": [msg.dict() for msg in messages]}
+    except Exception as e:
+        print(f"Error fetching messages: {str(e)}")
+        print(f"Error type: {type(e)}")
+        import traceback
+        print(f"Traceback: {traceback.format_exc()}")
+        raise HTTPException(status_code=500, detail=f"Error fetching messages: {str(e)}")
 
 @router.post('/chat/session/{session_id}/end')
 async def end_chat_session(session_id: str):
-    success = await db_service.end_session(session_id)
+    success = db_service.end_session(session_id)
     if success:
         return {"message": "Session ended successfully"}
     else:
