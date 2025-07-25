@@ -8,7 +8,11 @@ from unittest.mock import patch
 from fastapi.testclient import TestClient
 from datetime import datetime, timezone
 
+<<<<<<< HEAD
 from ..conftest import (
+=======
+from conftest import (
+>>>>>>> c1f9070ccb7a29111fee9de0911e64545c5cae06
     TEST_SESSION_ID,
     TEST_USER_ID,
     TEST_MESSAGE,

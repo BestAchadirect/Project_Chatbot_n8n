@@ -29,7 +29,11 @@ class N8NService:
             return os.getenv('N8N_WEBHOOK_URL_TEST', 'http://n8n:5678/webhook-test/returning-user')
         return os.getenv('N8N_WEBHOOK_URL_PRODUCTION', 'http://n8n:5678/webhook/returning-user')
 
+<<<<<<< HEAD
     async def send_message(self, session_id: str, message: str) -> Dict[str, Any]:
+=======
+    def send_message(self, session_id: str, message: str) -> Dict[str, Any]:
+>>>>>>> c1f9070ccb7a29111fee9de0911e64545c5cae06
         """
         Send message to n8n webhook.
         
@@ -41,6 +45,7 @@ class N8NService:
             Dict[str, Any]: Processed response from n8n
             
         Raises:
+<<<<<<< HEAD
             Exception: If the request fails
         """
         try:
@@ -56,6 +61,17 @@ class N8NService:
         except Exception as e:
             print(f"Error sending message to n8n: {str(e)}")
             raise
+=======
+            requests.RequestException: If the request fails
+        """
+        response = requests.post(
+            self.webhook_url,
+            json={'sessionId': session_id, 'message': message},
+            timeout=30
+        )
+        response.raise_for_status()
+        return response.json()
+>>>>>>> c1f9070ccb7a29111fee9de0911e64545c5cae06
 
     def extract_bot_message(self, response_json: dict) -> Optional[str]:
         """

@@ -4,11 +4,19 @@
  */
 
 /**
+<<<<<<< HEAD
  * Generates a cryptographically secure random ID
  * @private
  * @returns {string} A 20-character alphanumeric string
  */
 function generateId() {
+=======
+ * Generates a cryptographically secure random session ID
+ * @private
+ * @returns {string} A 20-character alphanumeric string
+ */
+function generateSessionId() {
+>>>>>>> c1f9070ccb7a29111fee9de0911e64545c5cae06
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
   return Array.from(
     { length: 20 }, 
@@ -17,6 +25,7 @@ function generateId() {
 }
 
 /**
+<<<<<<< HEAD
  * Get or create a persistent user ID for the browser
  * @returns {string} Valid user ID
  */
@@ -30,6 +39,8 @@ export function getOrCreateUserId() {
 }
 
 /**
+=======
+>>>>>>> c1f9070ccb7a29111fee9de0911e64545c5cae06
  * Retrieves existing session ID from storage or creates a new one
  * @public
  * @returns {string} Valid session ID, either existing or newly generated
@@ -42,7 +53,11 @@ export function getOrCreateUserId() {
 export function getOrCreateSessionId() {
   let id = sessionStorage.getItem('sessionId');
   if (!id || !/^[A-Za-z0-9]{20}$/.test(id)) {
+<<<<<<< HEAD
     id = generateId();
+=======
+    id = generateSessionId();
+>>>>>>> c1f9070ccb7a29111fee9de0911e64545c5cae06
     sessionStorage.setItem('sessionId', id);
   }
   return id;

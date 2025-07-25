@@ -49,6 +49,7 @@ export function getSecurityHeaders(enableSecurityHeaders) {
     : {};
 }
 
+<<<<<<< HEAD
 // Generate a UUID v4 (RFC4122) using more widely supported methods
 function generateUUID() {
   return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
@@ -58,6 +59,8 @@ function generateUUID() {
   });
 }
 
+=======
+>>>>>>> c1f9070ccb7a29111fee9de0911e64545c5cae06
 /**
  * Creates complete set of headers for API requests
  * @param {boolean} enableSecurityHeaders - Flag to enable additional security headers
@@ -72,7 +75,11 @@ function generateUUID() {
 export function createRequestHeaders(enableSecurityHeaders = false) {
   return {
     'Content-Type': 'application/json',
+<<<<<<< HEAD
     'X-Request-ID': generateUUID(), // Unique identifier for request tracing
+=======
+    'X-Request-ID': crypto.randomUUID(), // Unique identifier for request tracing
+>>>>>>> c1f9070ccb7a29111fee9de0911e64545c5cae06
     ...getSecurityHeaders(enableSecurityHeaders)
   };
 }

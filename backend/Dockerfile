@@ -9,7 +9,10 @@ RUN apt-get update && apt-get install -y \
     python3-dev \
     libpq-dev \
     wget \
+<<<<<<< HEAD
     curl \
+=======
+>>>>>>> c1f9070ccb7a29111fee9de0911e64545c5cae06
     && rm -rf /var/lib/apt/lists/*
 
 COPY requirements.txt .

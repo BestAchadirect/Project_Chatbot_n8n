@@ -25,6 +25,7 @@ class DatabaseService:
         """
         self.client: Client = create_client(url, key)
 
+<<<<<<< HEAD
     def get_user_sessions(self, user_id: str) -> List[ChatSession]:
         """
         Get all chat sessions for a given user.
@@ -44,6 +45,8 @@ class DatabaseService:
             print(f"Error traceback: {traceback.format_exc()}")
             raise
 
+=======
+>>>>>>> c1f9070ccb7a29111fee9de0911e64545c5cae06
     def get_or_create_session(self, session_id: str) -> None:
         """
         Retrieve existing session or create new one.
@@ -92,6 +95,7 @@ class DatabaseService:
         Returns:
             List[ChatMessage]: List of chat messages
         """
+<<<<<<< HEAD
         try:
             print(f"Querying Supabase for messages with session_id: {session_id}")
             resp = self.client.table('chat_messages').select('*').eq('session_id', session_id).order('timestamp').execute()
@@ -103,6 +107,10 @@ class DatabaseService:
             import traceback
             print(f"Database error traceback: {traceback.format_exc()}")
             raise
+=======
+        resp = self.client.table('chat_messages').select('*').eq('session_id', session_id).order('timestamp').execute()
+        return [ChatMessage(**msg) for msg in (resp.data or [])]
+>>>>>>> c1f9070ccb7a29111fee9de0911e64545c5cae06
 
     def end_session(self, session_id: str) -> bool:
         """
@@ -118,7 +126,10 @@ class DatabaseService:
             'ended_at': datetime.now(timezone.utc).isoformat()
         }).eq('session_id', session_id).execute()
         return bool(resp.data)
+<<<<<<< HEAD
         return bool(resp.data)
+=======
+>>>>>>> c1f9070ccb7a29111fee9de0911e64545c5cae06
 
 # Initialize database service with environment variables
 db_service = DatabaseService(

@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 
 /**
  * @fileoverview Custom React Hook for managing chat functionality
@@ -17,18 +18,43 @@ import { parseWebSocketMessage, formatBotResponse } from '../utils/messageHandli
  * @returns {Object} Chat interface methods and state
  * @property {Array} messages - Array of chat messages
  * @property {Array} sessions - Array of chat sessions
+=======
+
+/**
+ * @fileoverview Custom React Hook for managing chat functionality
+ * This hook handles WebSocket connections, message history, and chat interactions
+ * with the backend server. It implements real-time messaging and handles both
+ * WebSocket and REST API communications.
+ */
+
+import { useState, useEffect, useRef } from 'react';
+import { config } from '../utils/config';
+import { createRequestHeaders } from '../utils/security';
+import { getOrCreateSessionId } from '../utils/session';
+import { parseWebSocketMessage, formatBotResponse } from '../utils/messageHandling';
+
+/**
+ * Custom hook for chat functionality
+ * @returns {Object} Chat interface methods and state
+ * @property {Array} messages - Array of chat messages
+>>>>>>> c1f9070ccb7a29111fee9de0911e64545c5cae06
  * @property {Function} sendMessage - Function to send a new message
  * @property {Function} handleTyping - Function to handle typing events
  * @property {boolean} connected - WebSocket connection status
  */
 export default function useChat() {
+<<<<<<< HEAD
   // State for storing chat messages, sessions and connection status
+=======
+  // State for storing chat messages and connection status
+>>>>>>> c1f9070ccb7a29111fee9de0911e64545c5cae06
   const [messages, setMessages] = useState([]);
   const [sessions, setSessions] = useState([]);
   const [connected, setConnected] = useState(false);
   
   // Refs for persistent values across renders
   const wsRef = useRef(null);  // WebSocket reference
+<<<<<<< HEAD
   const userId = useRef(getOrCreateUserId());  // Persistent user identifier
   const sessionId = useRef(getOrCreateSessionId());  // Session-based chat ID
 
@@ -37,6 +63,16 @@ export default function useChat() {
    */
   useEffect(() => {
     loadChatSessions();
+=======
+  const sessionId = useRef(getOrCreateSessionId());  // Unique session identifier
+
+  /**
+   * Effect hook to load chat history when component mounts
+   * Retrieves previous messages from the backend server
+   */
+  useEffect(() => {
+    loadChatHistory();
+>>>>>>> c1f9070ccb7a29111fee9de0911e64545c5cae06
   }, []);
 
   /**
@@ -111,6 +147,7 @@ export default function useChat() {
    * Loads previous chat messages from the backend API
    * Retrieves and formats the chat history for the current session
    */
+<<<<<<< HEAD
   /**
    * Load available chat sessions for the current user
    */
@@ -137,6 +174,11 @@ export default function useChat() {
     try {
       const sid = targetSessionId || sessionId.current;
       const res = await fetch(`${config.API_BASE}/chat/messages/${sid}`);
+=======
+  async function loadChatHistory() {
+    try {
+      const res = await fetch(`${config.API_BASE}/chat/messages/${sessionId.current}`);
+>>>>>>> c1f9070ccb7a29111fee9de0911e64545c5cae06
       const data = await res.json();
       if (data.messages) {
         setMessages(data.messages.map(msg => ({ 
