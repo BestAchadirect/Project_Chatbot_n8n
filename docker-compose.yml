@@ -39,6 +39,11 @@ services:
       dockerfile: Dockerfile
     ports:
       - "3000:80"
+    environment:
+      - REACT_APP_API_PROTOCOL=http
+      - REACT_APP_WS_PROTOCOL=ws
+      - REACT_APP_BACKEND_HOST=backend
+      - REACT_APP_BACKEND_PORT=5001
     depends_on:
       backend:
         condition: service_healthy
