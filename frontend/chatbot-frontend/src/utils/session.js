@@ -4,16 +4,29 @@
  */
 
 /**
- * Generates a cryptographically secure random session ID
+ * Generates a cryptographically secure random ID
  * @private
  * @returns {string} A 20-character alphanumeric string
  */
-function generateSessionId() {
+function generateId() {
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
   return Array.from(
     { length: 20 }, 
     () => chars[Math.floor(Math.random() * chars.length)]
   ).join('');
+}
+
+/**
+ * Get or create a persistent user ID for the browser
+ * @returns {string} Valid user ID
+ */
+export function getOrCreateUserId() {
+  let id = localStorage.getItem('userId');
+  if (!id || !/^[A-Za-z0-9]{20}$/.test(id)) {
+    id = generateId();
+    localStorage.setItem('userId', id);
+  }
+  return id;
 }
 
 /**
@@ -29,7 +42,7 @@ function generateSessionId() {
 export function getOrCreateSessionId() {
   let id = sessionStorage.getItem('sessionId');
   if (!id || !/^[A-Za-z0-9]{20}$/.test(id)) {
-    id = generateSessionId();
+    id = generateId();
     sessionStorage.setItem('sessionId', id);
   }
   return id;

@@ -7,13 +7,21 @@ from app.socket_events import websocket_endpoint
 
 app = FastAPI()
 
-# Allow all origins for development
+# Configure CORS - Allow all origins in development
+origins = [
+    "http://192.168.101.63:3000",
+    "http://localhost:3000",
+    "http://localhost:5001",
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=["*"],
+    max_age=3600,
 )
 
 # Include API routes
